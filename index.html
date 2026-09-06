@@ -1,0 +1,1603 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Post-It</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M2 2h28v20l-8 8H2z' fill='%23F2CE45'/%3E%3Cpath d='M22 30v-8h8z' fill='%23D9B534'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=Caveat:wght@600;700&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,800&display=swap">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.5.5/peerjs.min.js"></script>
+<style>
+:root{
+  --ink:#12141A;
+  --ink2:#1A1D26;
+  --ink3:#232733;
+  --line:#333849;
+  --paper:#F4F1E6;
+  --muted:#8C93A6;
+  --t1:#F2CE45;
+  --t2:#F58BB2;
+  --t3:#7FB0EE;
+  --t4:#8ED98F;
+  --t5:#F7A25A;
+  --t6:#C9A4F2;
+  --ok:#6FCF8B;
+  --no:#E9695F;
+  --card-ink:#191914;
+  --sans:'Archivo','Helvetica Neue',Helvetica,Arial,sans-serif;
+  --disp:'Fraunces',Georgia,'Times New Roman',serif;
+  --hand:'Caveat','Bradley Hand',cursive;
+  --r:10px;
+}
+*{box-sizing:border-box}
+body{
+  margin:0;background:var(--ink);color:var(--paper);
+  font-family:var(--sans);font-size:15px;line-height:1.5;
+  -webkit-font-smoothing:antialiased;
+}
+button{font:inherit;color:inherit;cursor:pointer;border:0;background:none}
+input,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--t1);outline-offset:2px;border-radius:4px}
+.screen[hidden]{display:none!important}
+.num{font-variant-numeric:tabular-nums}
+
+/* ---------- shared bits ---------- */
+.eyebrow{
+  font-size:11px;letter-spacing:.14em;text-transform:uppercase;
+  font-weight:600;color:var(--muted);
+}
+.btn{
+  border:1px solid var(--line);background:var(--ink3);color:var(--paper);
+  padding:9px 16px;border-radius:var(--r);font-weight:600;font-size:14px;
+  transition:background .12s ease,border-color .12s ease,transform .08s ease;
+}
+.btn:hover{background:#2C3140;border-color:#454B5F}
+.btn:active{transform:translateY(1px)}
+.btn:disabled{opacity:.35;cursor:not-allowed}
+.btn.primary{background:var(--t1);color:#1A1810;border-color:var(--t1);font-weight:700}
+.btn.primary:hover{background:#FFE066;border-color:#FFE066}
+.btn.ghost{background:transparent}
+.btn.danger:hover{background:#3A2020;border-color:var(--no);color:#FFB3AD}
+.btn.big{padding:14px 24px;font-size:16px}
+
+/* ---------- lobby ---------- */
+#lobby{min-height:100vh;display:grid;place-items:center;padding:48px 20px}
+.lobby-inner{width:100%;max-width:920px}
+.wordmark{
+  font-family:var(--disp);font-weight:800;font-variation-settings:'SOFT' 40,'WONK' 1;
+  font-size:clamp(52px,11vw,110px);line-height:.92;letter-spacing:-.03em;
+  text-wrap:balance;margin:0;
+}
+.wordmark em{font-style:normal;color:var(--t1)}
+.lobby-sub{max-width:52ch;color:var(--muted);font-size:16px;margin:18px 0 0}
+.roles{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;margin-top:36px}
+.role{
+  text-align:left;border:1px solid var(--line);background:var(--ink2);
+  border-radius:14px;padding:20px;display:grid;gap:6px;align-content:start;
+  transition:border-color .14s ease,background .14s ease;
+}
+.role:hover{border-color:var(--t1);background:var(--ink3)}
+.role h3{margin:0;font-size:17px;font-weight:700}
+.role p{margin:0;color:var(--muted);font-size:13.5px;line-height:1.45}
+.role .key{font-family:var(--hand);font-size:22px;color:var(--t1);line-height:1}
+.rounds-strip{
+  margin-top:40px;border-top:1px solid var(--line);padding-top:20px;
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:2px 24px;
+}
+.rs-item{padding:8px 0;border-top:1px solid transparent}
+.rs-item b{display:block;font-size:14px;font-weight:600}
+.rs-item span{font-size:12px;color:var(--muted)}
+.note{
+  margin-top:28px;font-size:13px;color:var(--muted);
+  border-left:2px solid var(--line);padding-left:14px;max-width:64ch;
+}
+
+/* ---------- post-it card ---------- */
+.postit{
+  background:var(--tc);color:var(--card-ink);border-radius:2px 2px 10px 2px;
+  padding:16px 18px 18px;position:relative;
+  box-shadow:0 10px 22px -12px rgba(0,0,0,.85),0 1px 0 rgba(255,255,255,.35) inset;
+}
+.postit .pname{
+  font-family:var(--hand);font-size:26px;font-weight:700;line-height:1;
+  margin:0 0 2px;overflow-wrap:anywhere;
+}
+.chips{display:flex;gap:5px;flex-wrap:wrap;margin-top:10px}
+.chip{
+  min-width:32px;height:30px;padding:0 8px;border-radius:15px;
+  border:1.5px solid rgba(25,25,20,.42);background:rgba(255,255,255,.42);
+  font-weight:700;font-size:14px;font-variant-numeric:tabular-nums;
+  display:grid;place-items:center;color:var(--card-ink);
+}
+.chip.spent{opacity:.3;text-decoration:line-through;background:transparent}
+.chip.picked{background:var(--card-ink);color:var(--tc);border-color:var(--card-ink)}
+
+/* ---------- TV ---------- */
+#tv{
+  min-height:100vh;display:grid;grid-template-rows:auto 1fr auto;
+  gap:clamp(16px,2.4vh,34px);padding:clamp(16px,2.6vh,32px) clamp(18px,3vw,46px) clamp(18px,3vh,34px);
+}
+.tv-top{display:flex;align-items:center;gap:clamp(12px,2vw,26px);flex-wrap:wrap}
+.tv-cat{
+  font-family:var(--disp);font-weight:600;font-size:clamp(18px,2.4vw,34px);
+  letter-spacing:-.01em;line-height:1;
+}
+.tv-round{
+  font-size:clamp(10px,1vw,13px);letter-spacing:.16em;text-transform:uppercase;
+  font-weight:700;color:var(--t1);
+}
+.tv-pips{display:flex;gap:6px;margin-left:auto;align-items:center}
+.pip{width:clamp(9px,1vw,14px);height:clamp(9px,1vw,14px);border-radius:50%;border:2px solid var(--line)}
+.pip.done{background:var(--line);border-color:var(--line)}
+.pip.now{background:var(--t1);border-color:var(--t1);box-shadow:0 0 0 4px rgba(242,206,69,.16)}
+.tv-clock{
+  font-variant-numeric:tabular-nums;font-weight:700;
+  font-size:clamp(26px,3.4vw,50px);line-height:1;letter-spacing:-.02em;
+  padding:6px 14px;border-radius:10px;border:1px solid var(--line);
+  min-width:3.4ch;text-align:center;
+}
+.tv-clock.hot{color:var(--no);border-color:var(--no);animation:pulse 1s steps(2) infinite}
+.tv-clock.zero{background:var(--no);color:#1A1010;border-color:var(--no);animation:none}
+.tv-clock.idle{color:var(--muted)}
+@keyframes pulse{50%{opacity:.45}}
+
+.tv-stage{display:grid;align-content:center;justify-items:start;gap:clamp(14px,3vh,34px);min-height:0}
+.tv-q{
+  font-family:var(--disp);font-weight:400;font-variation-settings:'SOFT' 20;
+  font-size:clamp(30px,4.7vw,78px);line-height:1.12;letter-spacing:-.02em;
+  margin:0;max-width:26ch;text-wrap:balance;
+}
+.tv-a{
+  display:flex;align-items:baseline;gap:clamp(10px,1.4vw,20px);flex-wrap:wrap;
+  background:var(--paper);color:#141410;border-radius:3px 3px 12px 3px;
+  padding:clamp(12px,1.8vh,22px) clamp(16px,2vw,30px);
+  max-width:min(100%,34ch);box-shadow:0 14px 30px -16px rgba(0,0,0,.9);
+  animation:pop .28s cubic-bezier(.2,.9,.3,1.2) both;
+}
+.tv-a .lab{
+  font-size:clamp(10px,.9vw,13px);letter-spacing:.18em;text-transform:uppercase;
+  font-weight:700;color:#8A8470;
+}
+.tv-a .val{font-family:var(--disp);font-weight:800;font-size:clamp(22px,2.9vw,46px);line-height:1.1;letter-spacing:-.02em}
+@keyframes pop{from{opacity:0;transform:translateY(10px) scale(.985)}}
+.tv-msg{font-family:var(--disp);font-size:clamp(34px,6vw,92px);font-weight:800;letter-spacing:-.03em;margin:0;line-height:1}
+.tv-msg small{display:block;font-family:var(--sans);font-size:clamp(13px,1.3vw,19px);font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--t1);margin-bottom:14px}
+.tv-lede{color:var(--muted);font-size:clamp(14px,1.4vw,20px);max-width:46ch;margin:0}
+
+.tv-teams{display:grid;gap:clamp(10px,1.4vw,20px)}
+.tv-teams.many .tv-score{font-size:clamp(26px,3vw,48px)}
+.tv-teams.many .pname{font-size:clamp(16px,1.6vw,24px)}
+.tv-teams.many .chip{min-width:clamp(20px,2vw,30px);height:clamp(20px,2vw,28px);font-size:clamp(10px,.95vw,13px);padding:0 5px}
+.tv-teams.many .postit{padding:clamp(10px,1.2vh,14px) clamp(10px,1vw,14px)}
+.tv-team{position:relative}
+.tv-team .postit{
+  display:grid;grid-template-columns:1fr auto;align-items:end;
+  padding:clamp(12px,1.6vh,20px) clamp(14px,1.5vw,22px);
+  column-gap:12px;
+}
+.tv-team:nth-child(odd) .postit{transform:rotate(-.6deg)}
+.tv-team:nth-child(even) .postit{transform:rotate(.45deg)}
+.tv-team .pname{font-size:clamp(20px,2.2vw,34px)}
+.tv-score{
+  font-family:var(--disp);font-weight:800;font-variation-settings:'SOFT' 0;
+  font-size:clamp(36px,4.4vw,72px);line-height:.85;letter-spacing:-.04em;
+  font-variant-numeric:tabular-nums;grid-row:span 2;align-self:center;
+}
+.tv-team .chips{grid-column:1;margin-top:8px}
+.tv-team .chip{height:clamp(24px,2.5vw,34px);min-width:clamp(26px,2.8vw,40px);font-size:clamp(12px,1.2vw,17px);border-radius:20px}
+.delta{
+  position:absolute;top:-14px;right:10px;z-index:2;
+  font-weight:800;font-size:clamp(18px,2vw,30px);font-variant-numeric:tabular-nums;
+  background:var(--ok);color:#0E1A11;padding:3px 12px;border-radius:20px;
+  animation:rise .5s cubic-bezier(.2,.9,.3,1.3) both;
+}
+.delta.zero{background:var(--ink3);color:var(--muted);border:1px solid var(--line)}
+@keyframes rise{from{opacity:0;transform:translateY(14px)}}
+.lockflag{
+  position:absolute;top:-11px;right:10px;z-index:2;background:var(--ok);color:#0E1A11;
+  font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;
+  padding:3px 10px;border-radius:20px;
+}
+.tv-final{display:grid;gap:14px;width:100%;max-width:900px}
+.fin-row{
+  display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:18px;
+  border-bottom:1px solid var(--line);padding:14px 4px;
+}
+.fin-row .pos{font-family:var(--disp);font-weight:800;font-size:clamp(24px,3vw,44px);color:var(--muted);width:1.6ch}
+.fin-row .nm{font-family:var(--hand);font-size:clamp(28px,3.6vw,52px);line-height:1;color:var(--tc)}
+.fin-row .sc{font-family:var(--disp);font-weight:800;font-size:clamp(30px,4vw,60px);font-variant-numeric:tabular-nums;line-height:1}
+.fin-row.win .pos{color:var(--t1)}
+
+/* ---------- HOST ---------- */
+#host{min-height:100vh;display:grid;grid-template-rows:auto 1fr;max-width:1320px;margin:0 auto;padding:0 20px 28px}
+.hbar{
+  display:flex;align-items:center;gap:14px;flex-wrap:wrap;
+  padding:16px 0;border-bottom:1px solid var(--line);position:sticky;top:0;
+  background:var(--ink);z-index:20;
+}
+.hbar .mark{font-family:var(--disp);font-weight:800;font-size:22px;letter-spacing:-.02em}
+.hbar .mark em{font-style:normal;color:var(--t1)}
+.tag{
+  font-size:11px;letter-spacing:.12em;text-transform:uppercase;font-weight:700;
+  padding:4px 9px;border-radius:20px;border:1px solid var(--line);color:var(--muted);
+}
+.tag.live{color:var(--t1);border-color:rgba(242,206,69,.45)}
+.hbar .sp{margin-left:auto}
+.hgrid{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(340px,1fr);gap:20px;padding-top:20px;align-items:start}
+@media(max-width:900px){.hgrid{grid-template-columns:1fr}}
+.panel{border:1px solid var(--line);background:var(--ink2);border-radius:14px;padding:20px}
+.panel + .panel{margin-top:16px}
+.qhead{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+.qhead .cat{font-family:var(--disp);font-weight:600;font-size:20px;letter-spacing:-.01em}
+.diff{font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;font-weight:700;padding:3px 8px;border-radius:4px}
+.d1{background:rgba(111,207,139,.16);color:var(--ok)}
+.d2{background:rgba(242,206,69,.16);color:var(--t1)}
+.d3{background:rgba(233,105,95,.16);color:var(--no)}
+.qtext{font-family:var(--disp);font-size:26px;line-height:1.25;letter-spacing:-.015em;margin:0 0 16px;text-wrap:balance}
+.akey{
+  display:flex;gap:10px;align-items:baseline;background:var(--ink3);
+  border:1px dashed var(--line);border-radius:10px;padding:12px 14px;margin-bottom:16px;
+}
+.akey .lab{font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;font-weight:700;color:var(--muted);white-space:nowrap}
+.akey .val{font-weight:700;font-size:17px;color:var(--t1);line-height:1.35}
+.actions{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.hint{font-size:12.5px;color:var(--muted);margin:12px 0 0}
+.hint kbd{
+  font-family:var(--sans);font-size:11px;font-weight:700;background:var(--ink3);
+  border:1px solid var(--line);border-bottom-width:2px;border-radius:4px;padding:1px 6px;
+}
+
+.timer-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:18px;padding-top:18px;border-top:1px solid var(--line)}
+.tclock{
+  font-variant-numeric:tabular-nums;font-weight:700;font-size:34px;letter-spacing:-.02em;
+  min-width:3.6ch;line-height:1;
+}
+.tclock.hot{color:var(--no)}
+.tclock.idle{color:var(--muted)}
+
+.entry{border:1px solid var(--line);border-radius:12px;padding:14px;background:var(--ink2)}
+.entry + .entry{margin-top:12px}
+.entry.ready{border-color:rgba(111,207,139,.4)}
+.ehead{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.swatch{width:12px;height:12px;border-radius:3px;background:var(--tc);flex:none}
+.nameinput{
+  background:transparent;border:0;border-bottom:1px dashed transparent;
+  font-family:var(--hand);font-size:24px;font-weight:700;color:var(--tc);
+  padding:0 2px;min-width:0;flex:1;line-height:1.1;
+}
+.nameinput:hover{border-bottom-color:var(--line)}
+.nameinput:focus{outline:none;border-bottom-color:var(--tc)}
+.escore{font-weight:700;font-size:20px;font-variant-numeric:tabular-nums;color:var(--muted)}
+.elabel{font-size:10.5px;letter-spacing:.13em;text-transform:uppercase;font-weight:700;color:var(--muted);margin:0 0 6px}
+.pickrow{display:flex;gap:6px;flex-wrap:wrap}
+.pick{
+  min-width:44px;height:38px;border-radius:19px;border:1.5px solid var(--line);
+  background:var(--ink3);font-weight:700;font-size:15px;font-variant-numeric:tabular-nums;
+  display:grid;place-items:center;transition:all .12s ease;
+}
+.pick:hover:not(:disabled){border-color:var(--tc);color:var(--tc)}
+.pick.on{background:var(--tc);border-color:var(--tc);color:#191914}
+.pick:disabled{opacity:.28;text-decoration:line-through;cursor:not-allowed}
+.vrow{display:flex;gap:8px;margin-top:12px}
+.vbtn{
+  flex:1;height:40px;border-radius:10px;border:1.5px solid var(--line);
+  background:var(--ink3);font-weight:700;font-size:14px;
+}
+.vbtn.on.yes{background:var(--ok);border-color:var(--ok);color:#0E1A11}
+.vbtn.on.nope{background:var(--no);border-color:var(--no);color:#1A0F0E}
+.subline{
+  margin-top:10px;background:var(--ink3);border-radius:8px;padding:8px 11px;
+  font-size:14px;border-left:2px solid var(--tc);overflow-wrap:anywhere;
+}
+.subline .lab{font-size:10px;letter-spacing:.13em;text-transform:uppercase;font-weight:700;color:var(--muted);display:block;margin-bottom:2px}
+.await{margin-top:10px;font-size:12.5px;color:var(--muted)}
+
+.setrow{display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:space-between}
+.setrow + .setrow{margin-top:12px;padding-top:12px;border-top:1px solid var(--line)}
+.setrow p{margin:0;font-size:13px;color:var(--muted);max-width:46ch}
+.setrow b{color:var(--paper);font-size:14px;display:block;font-weight:600}
+.toggle{
+  width:46px;height:26px;border-radius:14px;background:var(--ink3);border:1px solid var(--line);
+  position:relative;flex:none;transition:background .15s ease,border-color .15s ease;
+}
+.toggle::after{
+  content:'';position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;
+  background:var(--muted);transition:transform .15s ease,background .15s ease;
+}
+.toggle.on{background:rgba(242,206,69,.22);border-color:var(--t1)}
+.toggle.on::after{transform:translateX(20px);background:var(--t1)}
+.toggle:disabled{opacity:.4;cursor:not-allowed}
+
+/* ---------- PHONE ---------- */
+#phone{min-height:100vh;display:grid;grid-template-rows:auto 1fr;padding:18px 18px 28px;max-width:560px;margin:0 auto;gap:18px}
+.pbar{display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--line);padding-bottom:14px}
+.pbar .mark{font-family:var(--disp);font-weight:800;font-size:19px}
+.pbar .mark em{font-style:normal;color:var(--t1)}
+.pstage{display:grid;align-content:start;gap:18px}
+.pteams{display:grid;gap:12px}
+.pteam{
+  border-radius:3px 3px 12px 3px;background:var(--tc);color:var(--card-ink);
+  padding:18px;text-align:left;font-family:var(--hand);font-size:28px;font-weight:700;line-height:1;
+  box-shadow:0 10px 20px -14px rgba(0,0,0,.9);
+}
+.pq{font-family:var(--disp);font-size:24px;line-height:1.25;margin:0;text-wrap:balance}
+.pans{
+  width:100%;min-height:110px;background:var(--ink2);border:1px solid var(--line);
+  border-radius:12px;padding:14px;font-size:17px;resize:vertical;
+}
+.pans:focus{outline:none;border-color:var(--tc)}
+.pchips{display:flex;gap:8px;flex-wrap:wrap}
+.pchip{
+  flex:1;min-width:52px;height:52px;border-radius:26px;border:1.5px solid var(--line);
+  background:var(--ink2);font-weight:700;font-size:18px;font-variant-numeric:tabular-nums;
+  display:grid;place-items:center;
+}
+.pchip.on{background:var(--tc);border-color:var(--tc);color:#191914}
+.pchip:disabled{opacity:.28;text-decoration:line-through}
+.locked{
+  border:1px solid rgba(111,207,139,.4);background:rgba(111,207,139,.08);
+  border-radius:12px;padding:18px;display:grid;gap:8px;
+}
+.locked b{color:var(--ok);font-size:15px;letter-spacing:.1em;text-transform:uppercase}
+.locked .ans{font-size:17px;overflow-wrap:anywhere}
+.waitbox{border:1px dashed var(--line);border-radius:12px;padding:24px;text-align:center;color:var(--muted);font-size:14px}
+
+/* ---------- setup ---------- */
+.modes{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:18px}
+.mode{
+  text-align:left;border:1.5px solid var(--line);background:var(--ink3);border-radius:12px;
+  padding:14px 16px;display:grid;gap:4px;transition:border-color .12s ease;
+}
+.mode:hover{border-color:#4A5065}
+.mode.on{border-color:var(--t1);background:rgba(242,206,69,.08)}
+.mode b{font-size:15px}
+.mode span{font-size:12.5px;color:var(--muted);line-height:1.4}
+.mode:disabled{opacity:.45;cursor:not-allowed}
+.stepper{display:inline-flex;align-items:center;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.stepper button{width:40px;height:38px;font-size:20px;font-weight:600;background:var(--ink3)}
+.stepper button:hover:not(:disabled){background:#2C3140}
+.stepper button:disabled{opacity:.3;cursor:not-allowed}
+.stepper .cnt{width:44px;text-align:center;font-weight:700;font-size:17px;font-variant-numeric:tabular-nums}
+.setuprow{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:14px 0;border-top:1px solid var(--line)}
+.setuprow b{font-size:14px;font-weight:600;display:block}
+.setuprow p{margin:0;font-size:12.5px;color:var(--muted)}
+
+/* ---------- join / QR ---------- */
+.joinwrap{display:grid;grid-template-columns:auto minmax(0,1fr);gap:24px;align-items:start}
+@media(max-width:680px){.joinwrap{grid-template-columns:1fr}}
+.qrbox{background:var(--paper);padding:12px;border-radius:12px;width:max-content;line-height:0}
+.qrbox canvas{display:block;width:168px;height:168px}
+.qrfall{width:168px;height:168px;display:grid;place-items:center;text-align:center;font-size:12px;color:#6B6656;padding:12px;line-height:1.45}
+.linkrow{display:flex;gap:8px;margin-top:10px;max-width:340px}
+.linkin{
+  flex:1;min-width:0;background:var(--ink3);border:1px solid var(--line);
+  border-radius:8px;padding:9px 11px;font-size:13px;width:100%;
+}
+.linkin:focus{outline:none;border-color:var(--t1)}
+.slots{display:grid;gap:9px}
+.slot{display:flex;align-items:center;gap:11px;border:1px dashed var(--line);border-radius:10px;padding:11px 13px}
+.slot.filled{border-style:solid;border-color:var(--tc);background:rgba(255,255,255,.03)}
+.slot .dot{width:10px;height:10px;border-radius:3px;background:var(--tc);flex:none;opacity:.3}
+.slot.filled .dot{opacity:1}
+.slot .who{font-family:var(--hand);font-size:23px;line-height:1;color:var(--tc)}
+.slot .empty{color:var(--muted);font-size:13px}
+.tv-join{display:grid;grid-template-columns:auto minmax(0,auto);gap:clamp(22px,3.5vw,56px);align-items:center}
+@media(max-width:760px){.tv-join{grid-template-columns:1fr}}
+.tv-qr{background:var(--paper);padding:clamp(10px,1.2vw,18px);border-radius:14px;line-height:0;width:max-content}
+.tv-qr canvas{display:block;width:clamp(150px,17vw,264px);height:clamp(150px,17vw,264px)}
+.tv-qr .qrfall{width:clamp(150px,17vw,264px);height:clamp(150px,17vw,264px);font-size:clamp(12px,1.1vw,15px)}
+.tv-slots{display:grid;gap:clamp(8px,1.3vh,15px);min-width:min(46vw,620px)}
+.tv-slot{display:flex;align-items:center;gap:14px;border:2px dashed var(--line);border-radius:12px;padding:clamp(10px,1.5vh,20px) clamp(14px,1.5vw,24px)}
+.tv-slot.filled{border-style:solid;border-color:var(--tc);background:rgba(255,255,255,.04);animation:pop .3s cubic-bezier(.2,.9,.3,1.2) both}
+.tv-slot .nm{font-family:var(--hand);font-size:clamp(24px,2.9vw,46px);line-height:1;color:var(--tc)}
+.tv-slot .wait{color:var(--muted);font-size:clamp(14px,1.4vw,21px)}
+.pteam:disabled{opacity:.4;cursor:not-allowed}
+
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important}
+}
+/* ---------- phone link (PeerJS) ---------- */
+.codebig{font-family:var(--disp);font-weight:800;font-size:44px;letter-spacing:.18em;line-height:1;margin:10px 0 4px}
+.netmsg{font-size:12.5px;color:var(--no);margin:8px 0 0}
+</style>
+</head>
+<body>
+<div id="lobby" class="screen">
+  <div class="lobby-inner">
+    <p class="eyebrow" style="margin:0 0 14px">Five rounds &middot; Five questions &middot; Two to six teams</p>
+    <h1 class="wordmark">Post<em>-</em>It</h1>
+    <p class="lobby-sub">Every round you get one 2, one 4, one 6, one 8 and one 10. Spend each exactly once. Nail the question, bank the chip. Blow your 10 on the easy one and you'll be sorry.</p>
+    <div class="roles">
+      <button class="role" data-role="host">
+        <span class="key">1</span>
+        <h3>Host control</h3>
+        <p>Run the game. Read the questions, work the timer, log wagers and mark answers.</p>
+      </button>
+      <button class="role" data-role="tv">
+        <span class="key">2</span>
+        <h3>TV display</h3>
+        <p>The big screen. Question, timer, scores and every team's remaining chips.</p>
+      </button>
+      <button class="role" data-role="phone">
+        <span class="key">3</span>
+        <h3>Team phone</h3>
+        <p>Only in phone mode. Scan the code on the TV, claim a seat, and send answers from your phone.</p>
+      </button>
+    </div>
+    <div class="rounds-strip" id="lobbyRounds"></div>
+    <p class="note">Open this same link in a second window for the TV, pick <b>TV display</b> there, and fullscreen it. The two windows stay in sync on their own. Phones only work if everyone can open the link, so keep the post-its handy as a backup.</p>
+  </div>
+</div>
+
+<div id="tv" class="screen" hidden>
+  <div class="tv-top">
+    <div>
+      <div class="tv-round" id="tvRound">Round 1 of 5</div>
+      <div class="tv-cat" id="tvCat">History</div>
+    </div>
+    <div class="tv-pips" id="tvPips"></div>
+    <div class="tv-clock idle" id="tvClock">1:00</div>
+  </div>
+  <div class="tv-stage" id="tvStage"></div>
+  <div class="tv-teams" id="tvTeams"></div>
+</div>
+
+<div id="host" class="screen" hidden>
+  <div class="hbar">
+    <span class="mark">Post<em>-</em>It</span>
+    <span class="tag" id="hPhase">Round 1 &middot; Q1</span>
+    <span class="tag" id="hPhones" hidden>Phones on</span>
+    <span class="sp"></span>
+    <button class="btn ghost" id="btnUndo">Undo last</button>
+    <button class="btn ghost" id="btnLobby">Switch view</button>
+  </div>
+  <div class="hgrid">
+    <div>
+      <div class="panel" id="qpanel"></div>
+      <div class="panel">
+        <div class="setrow">
+          <div>
+            <b>Phone mode</b>
+            <p id="phoneHelp">Teams send answers and wagers from their phones. Switch it off mid game and you're back on post-its, nothing lost.</p>
+          </div>
+          <button class="toggle" id="tgPhones" aria-label="Toggle phone submissions"></button>
+        </div>
+        <div class="setrow">
+          <div>
+            <b>Start over</b>
+            <p>Back to the lobby. Scores, chips and seats all cleared.</p>
+          </div>
+          <button class="btn ghost danger" id="btnReset">Reset game</button>
+        </div>
+      </div>
+    </div>
+    <div id="entries"></div>
+  </div>
+</div>
+
+<div id="phone" class="screen" hidden>
+  <div class="pbar">
+    <span class="mark">Post<em>-</em>It</span>
+    <span class="tag" id="pTeamTag" hidden></span>
+    <span class="sp" style="margin-left:auto"></span>
+    <button class="btn ghost" id="pSwitch" style="padding:6px 12px;font-size:13px">Change</button>
+  </div>
+  <div class="pstage" id="pStage"></div>
+</div>
+
+<script>
+"use strict";
+
+/* ============ CONTENT ============ */
+var ROUNDS = [
+  { title:"History", questions:[
+    { q:"In what year did the Berlin Wall fall?", a:"1989", d:1 },
+    { q:"Who was the first woman to win a Nobel Prize?", a:"Marie Curie (Physics, 1903)", d:1 },
+    { q:"The Rosetta Stone carries the same decree in three scripts. Name any two.", a:"Hieroglyphic, Demotic, Ancient Greek", d:2 },
+    { q:"The 1494 Treaty of Tordesillas divided newly explored lands between which two countries?", a:"Spain and Portugal", d:3 },
+    { q:"Mansa Musa, famous for his staggering wealth, ruled which West African empire?", a:"The Mali Empire", d:3 }
+  ]},
+  { title:"Science & Nature", questions:[
+    { q:"What is the most abundant gas in Earth's atmosphere?", a:"Nitrogen (about 78 percent)", d:1 },
+    { q:"How many bones are in the adult human body?", a:"206", d:1 },
+    { q:"What is the only metal that is liquid at room temperature?", a:"Mercury", d:2 },
+    { q:"What is the chemical symbol for tungsten?", a:"W, from its German name wolfram", d:3 },
+    { q:"Which scientist identified the electron, in 1897?", a:"J.J. Thomson", d:3 }
+  ]},
+  { title:"Geography", questions:[
+    { q:"Mount Kilimanjaro, the highest peak in Africa, is in which country?", a:"Tanzania", d:1 },
+    { q:"What is the capital of Australia?", a:"Canberra", d:1 },
+    { q:"Which two countries share the longest international border in the world?", a:"The United States and Canada", d:2 },
+    { q:"What is the smallest country in the world by land area?", a:"Vatican City", d:2 },
+    { q:"Lake Baikal, the deepest lake on Earth, lies in which country?", a:"Russia", d:3 }
+  ]},
+  { title:"Arts & Entertainment", questions:[
+    { q:"Which musical instrument has 88 keys?", a:"The piano", d:1 },
+    { q:"Who directed the 1975 film Jaws?", a:"Steven Spielberg", d:1 },
+    { q:"Which painter cut off part of his own ear in 1888?", a:"Vincent van Gogh", d:2 },
+    { q:"Rosencrantz and Guildenstern are characters in which Shakespeare play?", a:"Hamlet", d:2 },
+    { q:"The Ode to Joy text in Beethoven's Ninth Symphony was written by which poet?", a:"Friedrich Schiller", d:3 }
+  ]},
+  { title:"Sport, Food & Odds and Ends", questions:[
+    { q:"At even strength, how many players from each team are on the ice in a hockey game?", a:"Six, including the goaltender", d:1 },
+    { q:"How many dots are there in total on a standard six-sided die?", a:"21", d:1 },
+    { q:"Which spice is the most expensive in the world by weight?", a:"Saffron", d:2 },
+    { q:"Which letter of the alphabet appears in no U.S. state name?", a:"Q", d:2 },
+    { q:"In golf, what is the common name for a score of three under par on a single hole?", a:"An albatross (also called a double eagle)", d:3 }
+  ]}
+];
+var CHIPS = [2,4,6,8,10];
+var TCOL = ["var(--t1)","var(--t2)","var(--t3)","var(--t4)","var(--t5)","var(--t6)"];
+var MINT = 2, MAXT = 6;
+var DIFF = ["","Warm-up","Fair","Nasty"];
+var FULL = 60000;
+
+/* ============ STATE ============ */
+function fill(n, f){ var a = []; for(var i = 0; i < n; i++) a.push(f(i)); return a; }
+function fresh(n){
+  n = n || 3;
+  return {
+    rev: 0,
+    phase: "lobby",
+    gid: Date.now(),
+    code: null,
+    claims: fill(n, function(){ return null; }),
+    round: 0,
+    q: 0,
+    teams: fill(n, function(i){ return { name:"Team " + (i + 1), score:0 }; }),
+    used: fill(n, function(){ return []; }),
+    entries: blankEntries(n),
+    delta: fill(n, function(){ return 0; }),
+    timer: { running:false, remaining:FULL, endsAt:0 },
+    phones: false,
+    history: []
+  };
+}
+function blankEntries(n){
+  return fill(n || (S ? S.teams.length : 3), function(){ return { w:null, v:null, ans:null }; });
+}
+function N(){ return S.teams.length; }
+function zeros(){ return fill(N(), function(){ return 0; }); }
+var LSKEY = "postit.state.v1";
+var S = null;
+var role = null;
+var myTeam = null;
+var peer = null;
+var conns = [];
+var conn = null;
+var connected = false;
+var netMsg = null;
+var claimWaiter = null;
+var reconnectTimer = null;
+var reconnectDelay = 2000;
+var peerCode = null;
+var peerTries = 0;
+var everConnected = false;
+var pendingConfirm = false;
+
+function safeGet(store, k){ try { return store.getItem(k); } catch(e){ return null; } }
+function safeSet(store, k, v){ try { store.setItem(k, v); } catch(e){} }
+
+function load(){
+  var raw = safeGet(localStorage, LSKEY);
+  if(!raw) return null;
+  try {
+    var o = JSON.parse(raw);
+    if(o && o.teams && o.teams.length >= MINT && o.teams.length <= MAXT && Array.isArray(o.used)) return o;
+  } catch(e){}
+  return null;
+}
+S = load() || fresh();
+if(!S.history) S.history = [];
+if(!S.timer) S.timer = { running:false, remaining:FULL, endsAt:0 };
+if(!S.claims || S.claims.length !== S.teams.length) S.claims = fill(S.teams.length, function(){ return null; });
+delete S.joinUrl;
+if(typeof S.code !== "string" || S.code.length !== 4) S.code = null;
+if(!S.gid) S.gid = Date.now();
+
+var bc = null;
+try { if(window.BroadcastChannel) bc = new BroadcastChannel("postit-game"); } catch(e){}
+
+function persist(){ safeSet(localStorage, LSKEY, JSON.stringify(S)); }
+
+function adopt(incoming){
+  if(!incoming || typeof incoming.rev !== "number") return;
+  if(incoming.rev <= S.rev && incoming.phase === S.phase) return;
+  if(incoming.rev < S.rev) return;
+  S = incoming;
+  if(!S.history) S.history = [];
+  render();
+}
+
+if(bc){
+  bc.onmessage = function(ev){
+    if(role === "host") return;
+    if(ev.data && ev.data.type === "state") adopt(ev.data.state);
+  };
+}
+window.addEventListener("storage", function(ev){
+  if(role === "host") return;
+  if(ev.key !== LSKEY || !ev.newValue) return;
+  try { adopt(JSON.parse(ev.newValue)); } catch(e){}
+});
+
+/* host-only mutation commit */
+function commit(){
+  S.rev = (S.rev || 0) + 1;
+  persist();
+  if(bc) { try { bc.postMessage({ type:"state", state:S }); } catch(e){} }
+  render();
+  pushPeers();
+}
+
+/* ============ PEER (phone mode) ============ */
+var ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+function makeCode(){
+  var out = "", i;
+  try {
+    var buf = new Uint32Array(4);
+    crypto.getRandomValues(buf);
+    for(i = 0; i < 4; i++) out += ALPHABET[buf[i] % ALPHABET.length];
+    return out;
+  } catch(e){}
+  for(i = 0; i < 4; i++) out += ALPHABET[Math.floor(Math.random() * ALPHABET.length)];
+  return out;
+}
+function cleanCode(s){
+  return String(s || "").toUpperCase().split("").filter(function(c){
+    return ALPHABET.indexOf(c) !== -1;
+  }).join("").slice(0, 4);
+}
+function peerOk(){ return typeof window.Peer === "function"; }
+function pageUrl(){ return location.origin + location.pathname; }
+function joinUrl(){ return pageUrl() + "#" + (S.code || ""); }
+function slimState(){
+  return {
+    rev:S.rev, phase:S.phase, round:S.round, q:S.q, phones:S.phones,
+    gid:S.gid, code:S.code, claims:S.claims,
+    teams:S.teams, used:S.used, delta:S.delta, timer:S.timer, entries:S.entries
+  };
+}
+function send(c, msg){
+  if(!c || !c.open) return false;
+  try { c.send(msg); return true; } catch(e){ return false; }
+}
+function setNet(msg){
+  if(netMsg === msg) return;
+  netMsg = msg;
+  render();
+}
+
+/* ---- host: the only source of truth ---- */
+var pushTimer = null;
+function pushPeers(){
+  if(role !== "host" || !conns.length) return;
+  clearTimeout(pushTimer);
+  pushTimer = setTimeout(function(){
+    var msg = { t:"state", state:slimState() };
+    conns.forEach(function(c){ send(c, msg); });
+  }, 220);
+}
+function hostPeerStart(){
+  if(role !== "host" || !peerOk() || peer) return;
+  var code = S.code || makeCode();
+  peerCode = code;
+  var p = new Peer("postit-" + code, { debug:1 });
+  peer = p;
+  p.on("open", function(id){
+    if(peer !== p) return;
+    peerTries = 0;
+    var got = String(id).replace(/^postit-/, "");
+    netMsg = null;
+    if(S.code !== got) S.code = got;
+    commit();
+  });
+  p.on("connection", function(c){
+    if(peer !== p){ try { c.close(); } catch(e){} return; }
+    conns.push(c);
+    c.on("open", function(){ send(c, { t:"state", state:slimState() }); });
+    c.on("data", function(m){ hostOnData(c, m); });
+    var drop = function(){ var k = conns.indexOf(c); if(k !== -1) conns.splice(k, 1); };
+    c.on("close", drop);
+    c.on("error", drop);
+  });
+  p.on("disconnected", function(){
+    if(peer !== p || p.destroyed) return;
+    setTimeout(function(){
+      if(peer === p && !p.destroyed && p.disconnected){ try { p.reconnect(); } catch(e){} }
+    }, 2000);
+  });
+  p.on("error", function(err){
+    if(peer !== p) return;
+    var type = err && err.type;
+    if(type === "unavailable-id"){
+      try { p.destroy(); } catch(e){}
+      peer = null; conns = [];
+      if(peerTries++ < 3){ S.code = null; hostPeerStart(); }
+      else setNet("Couldn't get a game code from the relay. Carry on with post-its.");
+      return;
+    }
+    if(type === "peer-unavailable") return;
+    if(type === "browser-incompatible"){ setNet("This browser can't do phone links. Carry on with post-its."); return; }
+    setNet("Phone relay unreachable. Connected phones still work; new ones can't join.");
+  });
+}
+function hostOnData(c, m){
+  if(!m || typeof m !== "object") return;
+  if(m.t === "hello"){
+    send(c, { t:"state", state:slimState() });
+  } else if(m.t === "claim"){
+    var i = m.seat, nm = String(m.name || "").trim().slice(0, 18);
+    var ok = S.phones && S.phase === "lobby" && typeof i === "number" && i >= 0 && i < N() && !S.claims[i] && nm.length > 0;
+    if(ok){
+      S.claims[i] = nm;
+      S.teams[i].name = nm;
+      commit();
+    }
+    send(c, { t:"claimResult", seat:i, ok:!!ok });
+    if(!ok) send(c, { t:"state", state:slimState() });
+  } else if(m.t === "answer"){
+    if(!S.phones || S.phase !== "asking") return;
+    if(m.round !== S.round || m.q !== S.q) return;
+    var t = m.seat;
+    if(typeof t !== "number" || t < 0 || t >= N()) return;
+    S.entries[t].ans = String(m.answer || "").slice(0, 300);
+    if(CHIPS.indexOf(m.wager) !== -1 && S.used[t].indexOf(m.wager) === -1) S.entries[t].w = m.wager;
+    commit();
+  }
+}
+
+/* ---- phone: connects to the host by code ---- */
+function phoneSeat(){
+  var s = safeGet(sessionStorage, "postit.team");
+  return (s !== null && s !== "" && !isNaN(+s)) ? +s : null;
+}
+function phoneBoot(){
+  if(myTeam === null) myTeam = phoneSeat();
+  var code = cleanCode(location.hash.slice(1));
+  if(code.length !== 4) code = cleanCode(safeGet(sessionStorage, "postit.code"));
+  if(code.length === 4) phoneConnect(code);
+  else renderPhone();
+}
+function phoneStop(){
+  clearTimeout(reconnectTimer);
+  reconnectTimer = null;
+  connected = false;
+  if(conn){ try { conn.close(); } catch(e){} conn = null; }
+  if(peer){ try { peer.destroy(); } catch(e){} peer = null; }
+}
+function phoneConnect(code){
+  code = cleanCode(code);
+  if(code.length !== 4 || !peerOk()) return;
+  phoneStop();
+  if(code !== peerCode) everConnected = false;
+  peerCode = code;
+  safeSet(sessionStorage, "postit.code", code);
+  netMsg = "Connecting…";
+  renderPhone();
+  var p = new Peer({ debug:1 });
+  peer = p;
+  p.on("open", function(){
+    if(peer !== p) return;
+    var c = p.connect("postit-" + code, { reliable:true, serialization:"json" });
+    conn = c;
+    c.on("open", function(){
+      if(conn !== c) return;
+      connected = true;
+      everConnected = true;
+      netMsg = null;
+      reconnectDelay = 2000;
+      send(c, { t:"hello", seat:phoneSeat() });
+      render();
+    });
+    c.on("data", function(m){ if(conn === c) phoneOnData(m); });
+    c.on("close", function(){ if(conn === c) phoneLost("Lost the host. Reconnecting…"); });
+    c.on("error", function(){ if(conn === c) phoneLost("Lost the host. Reconnecting…"); });
+  });
+  p.on("disconnected", function(){
+    if(peer !== p || p.destroyed) return;
+    if(conn && conn.open){ try { p.reconnect(); } catch(e){} return; }
+    phoneLost("Lost the relay. Reconnecting…");
+  });
+  p.on("error", function(err){
+    if(peer !== p) return;
+    var type = err && err.type;
+    if(type === "peer-unavailable"){
+      if(everConnected){ phoneLost("Can't find the host right now. Retrying\u2026"); return; }
+      phoneStop();
+      netMsg = "No game with code " + code + ". Check the code on the TV.";
+      renderPhone();
+      return;
+    }
+    if(type === "browser-incompatible"){
+      phoneStop();
+      netMsg = "This browser can't do phone play. Grab a post-it.";
+      renderPhone();
+      return;
+    }
+    phoneLost("Can't reach the relay. Retrying… (post-its still work)");
+  });
+}
+function phoneLost(msg){
+  connected = false;
+  if(conn){ try { conn.close(); } catch(e){} conn = null; }
+  if(peer){ try { peer.destroy(); } catch(e){} peer = null; }
+  if(claimWaiter){ var w = claimWaiter; claimWaiter = null; clearTimeout(w.timer); w.resolve(false); }
+  netMsg = msg;
+  renderPhone();
+  clearTimeout(reconnectTimer);
+  reconnectTimer = setTimeout(function(){
+    reconnectTimer = null;
+    if(role === "phone" && !connected && peerCode) phoneConnect(peerCode);
+  }, reconnectDelay);
+  reconnectDelay = Math.min(reconnectDelay * 2, 15000);
+}
+function phoneOnData(m){
+  if(!m || typeof m !== "object") return;
+  if(m.t === "state" && m.state && typeof m.state.rev === "number"){
+    var d = m.state;
+    d.history = [];
+    S = d;
+    render();
+  } else if(m.t === "claimResult" && claimWaiter && claimWaiter.seat === m.seat){
+    var w = claimWaiter; claimWaiter = null;
+    clearTimeout(w.timer);
+    w.resolve(!!m.ok);
+  }
+}
+function claimSeat(i, name){
+  return new Promise(function(resolve){
+    if(claimWaiter){ clearTimeout(claimWaiter.timer); claimWaiter.resolve(false); claimWaiter = null; }
+    if(!send(conn, { t:"claim", seat:i, name:name })){ resolve(false); return; }
+    claimWaiter = { seat:i, resolve:resolve, timer:setTimeout(function(){
+      if(claimWaiter && claimWaiter.seat === i){ claimWaiter = null; resolve(false); }
+    }, 6000) };
+  });
+}
+function sendAnswer(answer, wager){
+  return send(conn, { t:"answer", round:S.round, q:S.q, seat:myTeam, answer:answer, wager:wager });
+}
+document.addEventListener("visibilitychange", function(){
+  if(document.visibilityState !== "visible" || role !== "phone") return;
+  if(!connected && peerCode && !reconnectTimer && !peer) phoneConnect(peerCode);
+});
+
+function drawQr(el, text, size){
+  if(!el) return;
+  el.innerHTML = "";
+  if(!text){
+    el.innerHTML = '<div class="qrfall">Waiting for the host to open the phone link…</div>';
+    return;
+  }
+  if(!window.QRious){
+    el.innerHTML = '<div class="qrfall">Code unavailable. Send the link instead.</div>';
+    return;
+  }
+  try {
+    var cv = document.createElement("canvas");
+    el.appendChild(cv);
+    new QRious({ element:cv, value:text, size:size || 340, background:"#F4F1E6", foreground:"#141410", level:"M" });
+  } catch(e){
+    el.innerHTML = '<div class="qrfall">Code unavailable. Send the link instead.</div>';
+  }
+}
+
+/* ============ TIMER ============ */
+function msLeft(){
+  var t = S.timer;
+  if(!t) return FULL;
+  if(t.running) return Math.max(0, t.endsAt - Date.now());
+  return Math.max(0, t.remaining);
+}
+function fmt(ms){
+  var s = Math.ceil(ms / 1000);
+  var m = Math.floor(s / 60);
+  var r = s % 60;
+  return m + ":" + (r < 10 ? "0" : "") + r;
+}
+function timerStart(){
+  if(S.timer.running) return;
+  var rem = S.timer.remaining > 0 ? S.timer.remaining : FULL;
+  S.timer = { running:true, remaining:rem, endsAt: Date.now() + rem };
+  commit();
+}
+function timerPause(){
+  if(!S.timer.running) return;
+  S.timer = { running:false, remaining: msLeft(), endsAt:0 };
+  commit();
+}
+function timerReset(){
+  S.timer = { running:false, remaining:FULL, endsAt:0 };
+  commit();
+}
+setInterval(function(){
+  if(role !== "host" && role !== "tv" && role !== "phone") return;
+  if(S.timer && S.timer.running && msLeft() <= 0 && role === "host"){
+    S.timer = { running:false, remaining:0, endsAt:0 };
+    commit();
+    return;
+  }
+  paintClocks();
+}, 250);
+
+function paintClocks(){
+  var ms = msLeft();
+  var running = S.timer && S.timer.running;
+  var txt = fmt(ms);
+  var cls = ms <= 0 ? "zero" : (running && ms <= 10000 ? "hot" : (running ? "" : "idle"));
+  var tvc = document.getElementById("tvClock");
+  if(tvc && !document.getElementById("tv").hidden){
+    tvc.textContent = txt;
+    tvc.className = "tv-clock " + cls;
+  }
+  var hc = document.getElementById("hClock");
+  if(hc){
+    hc.textContent = txt;
+    hc.className = "tclock " + (ms <= 0 ? "hot" : (running && ms <= 10000 ? "hot" : (running ? "" : "idle")));
+  }
+  var pc = document.getElementById("pClock");
+  if(pc) pc.textContent = txt;
+}
+
+/* ============ GAME ACTIONS ============ */
+function curQ(){ return ROUNDS[S.round].questions[S.q]; }
+function avail(i){
+  return CHIPS.filter(function(c){ return S.used[i].indexOf(c) === -1; });
+}
+function allReady(){
+  return S.entries.every(function(e){ return e.w !== null && e.v !== null; });
+}
+function setTeamCount(n){
+  if(n < MINT || n > MAXT || S.phase !== "lobby") return;
+  var cur = N();
+  if(n > cur){
+    for(var i = cur; i < n; i++){
+      S.teams.push({ name:"Team " + (i + 1), score:0 });
+      S.used.push([]); S.claims.push(null);
+    }
+  } else {
+    S.teams.length = n; S.used.length = n; S.claims.length = n;
+  }
+  S.entries = blankEntries(n);
+  S.delta = zeros();
+  commit();
+}
+function startGame(){
+  S.phase = "intro";
+  commit();
+}
+function startRound(){
+  S.phase = "asking";
+  S.entries = blankEntries();
+  S.delta = zeros();
+  S.timer = { running:false, remaining:FULL, endsAt:0 };
+  commit();
+}
+function reveal(){
+  if(S.timer.running) S.timer = { running:false, remaining: msLeft(), endsAt:0 };
+  S.phase = "revealed";
+  commit();
+}
+function scoreIt(){
+  if(!allReady()) return;
+  S.history.push({
+    round:S.round, q:S.q,
+    scores:S.teams.map(function(t){ return t.score; }),
+    used:S.used.map(function(a){ return a.slice(); }),
+    entries:JSON.parse(JSON.stringify(S.entries))
+  });
+  if(S.history.length > 30) S.history.shift();
+  S.delta = S.entries.map(function(e){ return e.v === "right" ? e.w : 0; });
+  S.entries.forEach(function(e, i){
+    if(e.v === "right") S.teams[i].score += e.w;
+    if(S.used[i].indexOf(e.w) === -1) S.used[i].push(e.w);
+  });
+  S.phase = "scored";
+  commit();
+}
+function undo(){
+  var h = S.history.pop();
+  if(!h) return;
+  S.round = h.round; S.q = h.q;
+  h.scores.forEach(function(v, i){ S.teams[i].score = v; });
+  S.used = h.used;
+  S.entries = h.entries;
+  S.delta = zeros();
+  S.phase = "revealed";
+  commit();
+}
+function advance(){
+  S.delta = zeros();
+  if(S.q < 4){
+    S.q += 1;
+    S.entries = blankEntries();
+    S.phase = "asking";
+    S.timer = { running:false, remaining:FULL, endsAt:0 };
+  } else {
+    S.phase = "roundEnd";
+  }
+  commit();
+}
+function nextRound(){
+  if(S.round < 4){
+    S.round += 1;
+    S.q = 0;
+    S.used = fill(N(), function(){ return []; });
+    S.entries = blankEntries();
+    S.delta = zeros();
+    S.phase = "intro";
+    S.timer = { running:false, remaining:FULL, endsAt:0 };
+  } else {
+    S.phase = "final";
+  }
+  commit();
+}
+function resetGame(){
+  var phones = S.phones, code = S.code, n = N(), rev = S.rev || 0;
+  S = fresh(n);
+  S.rev = rev;
+  S.phones = phones;
+  S.code = code;
+  commit();
+}
+
+/* ============ RENDER ============ */
+function esc(s){
+  return String(s).replace(/[&<>"]/g, function(c){
+    return { "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;" }[c];
+  });
+}
+function setRole(r){
+  role = r;
+  safeSet(sessionStorage, "postit.role", r);
+  ["lobby","host","tv","phone"].forEach(function(id){
+    document.getElementById(id).hidden = (id !== r);
+  });
+  if(r === "host" && S.phones) hostPeerStart();
+  if(r === "phone") phoneBoot();
+  render();
+}
+function render(){
+  if(role === "host") renderHost();
+  else if(role === "tv") renderTv();
+  else if(role === "phone") renderPhone();
+  paintClocks();
+}
+
+/* ---- lobby ---- */
+(function lobbyRounds(){
+  var el = document.getElementById("lobbyRounds");
+  el.innerHTML = ROUNDS.map(function(r, i){
+    return '<div class="rs-item"><b>' + (i + 1) + ". " + esc(r.title) + "</b><span>5 questions</span></div>";
+  }).join("");
+})();
+Array.prototype.forEach.call(document.querySelectorAll(".role"), function(b){
+  b.addEventListener("click", function(){ setRole(b.dataset.role); });
+});
+
+/* ---- TV ---- */
+function renderTv(){
+  var r = ROUNDS[S.round];
+  document.getElementById("tvRound").textContent = "Round " + (S.round + 1) + " of 5";
+  document.getElementById("tvCat").textContent = r.title;
+  document.getElementById("tvPips").innerHTML = [0,1,2,3,4].map(function(i){
+    var c = i < S.q ? "done" : (i === S.q ? "now" : "");
+    return '<span class="pip ' + c + '"></span>';
+  }).join("");
+
+  document.getElementById("tvClock").hidden = (S.phase === "lobby" || S.phase === "final");
+  if(S.phase === "lobby"){
+    document.getElementById("tvRound").textContent = "Waiting to start";
+    document.getElementById("tvCat").textContent = "Post-It";
+    document.getElementById("tvPips").innerHTML = "";
+  }
+
+  var stage = document.getElementById("tvStage");
+  var html = "";
+  if(S.phase === "lobby" && !S.phones){
+    html = '<p class="tv-msg"><small>Get comfortable</small>Post<span style="color:var(--t1)">-</span>It</p>' +
+      '<p class="tv-lede">' + N() + ' teams. Five rounds. Every round you get one 2, 4, 6, 8 and 10 to spend, each exactly once. Right answer banks the chip.</p>';
+  } else if(S.phase === "lobby"){
+    html = '<div class="tv-join"><div class="tv-qr" id="tvQr"></div><div>' +
+      '<p class="tv-msg" style="font-size:clamp(28px,4.2vw,62px);margin-bottom:clamp(14px,2vh,26px)">' +
+      '<small>Scan to claim a team</small>' + N() + ' seats</p>' +
+      '<p class="tv-lede" style="margin:0 0 clamp(14px,2vh,26px)">' +
+        (S.code ? 'Or open <b>' + esc(pageUrl()) + '</b> and enter code <b class="num" style="color:var(--t1);letter-spacing:.12em">' + esc(S.code) + '</b>' : 'Waiting for the host to open the phone link\u2026') + '</p>' +
+      '<div class="tv-slots">' + S.teams.map(function(t, i){
+        var c = S.claims[i];
+        return '<div class="tv-slot' + (c ? " filled" : "") + '" style="--tc:' + TCOL[i] + '">' +
+          (c ? '<span class="nm">' + esc(c) + "</span>" : '<span class="wait">Open seat</span>') + "</div>";
+      }).join("") + "</div></div></div>";
+  } else if(S.phase === "intro"){
+    html = '<p class="tv-msg"><small>Round ' + (S.round + 1) + ' of 5</small>' + esc(r.title) + '</p>' +
+           '<p class="tv-lede">Fresh chips. Each team has one 2, 4, 6, 8 and 10 to spend across these five questions.</p>';
+  } else if(S.phase === "roundEnd"){
+    html = '<p class="tv-msg"><small>End of round ' + (S.round + 1) + '</small>' + esc(r.title) + '</p>' +
+           '<p class="tv-lede">All chips spent. Scores below.</p>';
+  } else if(S.phase === "final"){
+    var order = S.teams.map(function(t, i){ return { t:t, i:i }; })
+      .sort(function(a, b){ return b.t.score - a.t.score; });
+    var top = order[0].t.score;
+    html = '<div class="tv-final"><p class="tv-msg" style="margin-bottom:10px"><small>Final</small>Scores</p>' +
+      order.map(function(o, n){
+        return '<div class="fin-row' + (o.t.score === top ? " win" : "") + '" style="--tc:' + TCOL[o.i] + '">' +
+          '<span class="pos">' + (n + 1) + '</span>' +
+          '<span class="nm">' + esc(o.t.name) + '</span>' +
+          '<span class="sc num">' + o.t.score + '</span></div>';
+      }).join("") + "</div>";
+  } else {
+    var qq = r.questions[S.q];
+    html = '<p class="tv-q">' + esc(qq.q) + "</p>";
+    if(S.phase === "revealed" || S.phase === "scored"){
+      html += '<div class="tv-a"><span class="lab">Answer</span><span class="val">' + esc(qq.a) + "</span></div>";
+    }
+  }
+  stage.innerHTML = html;
+  if(S.phase === "lobby" && S.phones) drawQr(document.getElementById("tvQr"), S.code ? joinUrl() : "", 520);
+
+  var showLock = S.phones && S.phase === "asking";
+  var tt = document.getElementById("tvTeams");
+  tt.style.gridTemplateColumns = "repeat(" + N() + ",minmax(0,1fr))";
+  tt.className = "tv-teams" + (N() > 4 ? " many" : "");
+  tt.innerHTML = S.teams.map(function(t, i){
+    var d = S.delta[i];
+    var flag = "";
+    if(S.phase === "scored"){
+      flag = '<span class="delta' + (d ? "" : " zero") + '">' + (d ? "+" + d : "0") + "</span>";
+    } else if(showLock && S.entries[i] && S.entries[i].ans !== null){
+      flag = '<span class="lockflag">In</span>';
+    }
+    return '<div class="tv-team" style="--tc:' + TCOL[i] + '">' + flag +
+      '<div class="postit"><p class="pname">' + esc(t.name) + "</p>" +
+      '<span class="tv-score num">' + t.score + "</span>" +
+      '<div class="chips">' + CHIPS.map(function(c){
+        return '<span class="chip' + (S.used[i].indexOf(c) !== -1 ? " spent" : "") + '">' + c + "</span>";
+      }).join("") + "</div></div></div>";
+  }).join("");
+}
+
+/* ---- HOST ---- */
+function renderHost(){
+  var r = ROUNDS[S.round];
+  var qq = r.questions[S.q];
+  document.getElementById("hPhase").textContent =
+    S.phase === "lobby" ? "Lobby" :
+    S.phase === "final" ? "Game over" :
+    (S.phase === "roundEnd" ? "Round " + (S.round + 1) + " complete" :
+    "Round " + (S.round + 1) + " · Q" + (S.q + 1));
+  var hp = document.getElementById("hPhones");
+  hp.hidden = !S.phones;
+  hp.textContent = netMsg ? "Phones offline" : (S.code ? "Phones on \u00b7 " + S.code : "Phones on");
+  document.getElementById("btnUndo").disabled = S.history.length === 0;
+
+  var tg = document.getElementById("tgPhones");
+  tg.className = "toggle" + (S.phones ? " on" : "");
+  tg.disabled = !peerOk();
+  document.getElementById("phoneHelp").textContent = peerOk()
+    ? "Teams send answers and wagers from their phones. Switch it off mid game and you're back on post-its, nothing lost."
+    : "Phone link unavailable (PeerJS didn't load). Stick with post-its and enter the wagers yourself.";
+
+  var p = document.getElementById("qpanel");
+  var mainBtn = "", extra = "";
+
+  if(S.phase === "lobby"){
+    var cnt = N();
+    var setup =
+      '<p class="eyebrow">Set up the game</p>' +
+      '<p class="qtext" style="margin-bottom:16px">How are teams answering?</p>' +
+      '<div class="modes">' +
+        '<button class="mode' + (!S.phones ? " on" : "") + '" id="mdPaper"><b>Post-it notes</b><span>Teams write answer and chip on paper. You read them out and log them here.</span></button>' +
+        '<button class="mode' + (S.phones ? " on" : "") + '" id="mdPhone"' + (peerOk() ? "" : " disabled") + '><b>Phones</b><span>' +
+          (peerOk() ? "A QR code goes on the TV. One person per team scans, names the team, and sends answers from their phone." : "Not available: PeerJS didn't load.") +
+        '</span></button>' +
+      '</div>' +
+      '<div class="setuprow"><div><b>Teams</b><p>Two to six. Change it here before you start.</p></div>' +
+        '<div class="stepper"><button id="tmMinus"' + (cnt <= MINT ? " disabled" : "") + ' aria-label="Fewer teams">&minus;</button>' +
+        '<span class="cnt num">' + cnt + '</span>' +
+        '<button id="tmPlus"' + (cnt >= MAXT ? " disabled" : "") + ' aria-label="More teams">+</button></div></div>';
+
+    if(S.phones){
+      setup +=
+        '<div class="joinwrap" style="padding-top:16px;border-top:1px solid var(--line)"><div>' +
+          '<div class="qrbox" id="hQr"></div>' +
+          '<p class="elabel" style="margin:14px 0 0">Game code</p>' +
+          '<div class="codebig num">' + (S.code ? esc(S.code) : "\u00b7\u00b7\u00b7\u00b7") + '</div>' +
+          '<p class="hint" style="margin:8px 0 0;max-width:340px">' +
+            (S.code ? "Phones scan the code, or open <b>" + esc(pageUrl()) + "</b> and type it in." : "Starting the phone link\u2026") + '</p>' +
+          (netMsg ? '<p class="netmsg">' + esc(netMsg) + '</p>' : "") +
+        '</div><div>' +
+          '<p class="elabel">Seats</p><div class="slots">' +
+          S.teams.map(function(t, i){
+            var c = S.claims[i];
+            return '<div class="slot' + (c ? " filled" : "") + '" style="--tc:' + TCOL[i] + '"><span class="dot"></span>' +
+              (c ? '<span class="who">' + esc(c) + "</span>" : '<span class="empty">Waiting for a scan…</span>') + "</div>";
+          }).join("") + "</div>" +
+          '<div class="actions" style="margin-top:18px"><button class="btn primary big" id="btnGo">Start the game</button>' +
+          '<button class="btn ghost" id="btnClearJoin">Clear seats</button></div>' +
+        "</div></div>";
+    } else {
+      setup +=
+        '<div class="setuprow" style="align-items:flex-start"><div><b>Team names</b><p>Edit them on the right. They show on the TV as written.</p></div></div>' +
+        '<div class="actions"><button class="btn primary big" id="btnGo">Start the game</button></div>';
+    }
+    p.innerHTML = setup;
+
+    document.getElementById("mdPaper").onclick = function(){ if(S.phones){ S.phones = false; commit(); } };
+    document.getElementById("mdPhone").onclick = function(){ if(peerOk() && !S.phones){ S.phones = true; commit(); hostPeerStart(); } };
+    document.getElementById("tmMinus").onclick = function(){ setTeamCount(cnt - 1); };
+    document.getElementById("tmPlus").onclick = function(){ setTeamCount(cnt + 1); };
+    document.getElementById("btnGo").onclick = startGame;
+    if(S.phones){
+      drawQr(document.getElementById("hQr"), S.code ? joinUrl() : "", 340);
+      document.getElementById("btnClearJoin").onclick = function(){
+        S.claims = fill(N(), function(){ return null; });
+        commit();
+      };
+    }
+    document.getElementById("entries").innerHTML = scoreboardPanel();
+    wireNames();
+    return;
+  }
+  if(S.phase === "intro"){
+    p.innerHTML =
+      '<p class="eyebrow">Round ' + (S.round + 1) + ' of 5</p>' +
+      '<p class="qtext" style="margin-bottom:8px">' + esc(r.title) + "</p>" +
+      '<p class="hint" style="margin:0 0 18px">Five questions. Every team gets a fresh set of chips: 2, 4, 6, 8, 10, each used once.</p>' +
+      '<div class="actions"><button class="btn primary big" id="btnStart">Start round ' + (S.round + 1) + "</button></div>";
+    document.getElementById("btnStart").onclick = startRound;
+    document.getElementById("entries").innerHTML = scoreboardPanel();
+    wireNames();
+    return;
+  }
+  if(S.phase === "roundEnd"){
+    p.innerHTML =
+      '<p class="eyebrow">Round ' + (S.round + 1) + ' complete</p>' +
+      '<p class="qtext" style="margin-bottom:18px">' + esc(r.title) + "</p>" +
+      '<div class="actions"><button class="btn primary big" id="btnNextR">' +
+      (S.round < 4 ? "Start round " + (S.round + 2) + ": " + esc(ROUNDS[S.round + 1].title) : "See final scores") +
+      "</button></div>";
+    document.getElementById("btnNextR").onclick = nextRound;
+    document.getElementById("entries").innerHTML = scoreboardPanel();
+    wireNames();
+    return;
+  }
+  if(S.phase === "final"){
+    p.innerHTML =
+      '<p class="eyebrow">Game over</p>' +
+      '<p class="qtext" style="margin-bottom:18px">All 25 questions played.</p>' +
+      '<div class="actions"><button class="btn big" id="btnAgain">Play again</button></div>';
+    document.getElementById("btnAgain").onclick = resetGame;
+    document.getElementById("entries").innerHTML = scoreboardPanel();
+    wireNames();
+    return;
+  }
+
+  var ready = allReady();
+  if(S.phase === "asking"){
+    mainBtn = '<button class="btn primary big" id="btnReveal">Reveal answer</button>';
+  } else if(S.phase === "revealed"){
+    mainBtn = '<button class="btn primary big" id="btnScore"' + (ready ? "" : " disabled") + ">Score it</button>";
+    if(!ready) extra = '<span class="hint" style="margin:0">Every team needs a chip and a verdict first.</span>';
+  } else if(S.phase === "scored"){
+    mainBtn = '<button class="btn primary big" id="btnNext">' + (S.q < 4 ? "Next question" : "End of round") + "</button>";
+  }
+
+  p.innerHTML =
+    '<div class="qhead"><span class="eyebrow">Q' + (S.q + 1) + ' of 5</span>' +
+    '<span class="cat">' + esc(r.title) + "</span>" +
+    '<span class="diff d' + qq.d + '">' + DIFF[qq.d] + "</span></div>" +
+    '<p class="qtext">' + esc(qq.q) + "</p>" +
+    '<div class="akey"><span class="lab">Answer</span><span class="val">' + esc(qq.a) + "</span></div>" +
+    '<div class="actions">' + mainBtn + extra + "</div>" +
+    '<div class="timer-row">' +
+      '<span class="tclock idle" id="hClock">1:00</span>' +
+      '<button class="btn" id="btnT1">' + (S.timer.running ? "Pause" : "Start timer") + "</button>" +
+      '<button class="btn ghost" id="btnT2">Reset to 1:00</button>' +
+      '<span class="hint" style="margin:0">Manual. It never starts itself.</span>' +
+    "</div>" +
+    '<p class="hint"><kbd>Space</kbd> timer &middot; <kbd>R</kbd> reveal &middot; <kbd>Enter</kbd> score &middot; <kbd>N</kbd> next</p>';
+
+  var b;
+  if((b = document.getElementById("btnReveal"))) b.onclick = reveal;
+  if((b = document.getElementById("btnScore"))) b.onclick = scoreIt;
+  if((b = document.getElementById("btnNext"))) b.onclick = advance;
+  document.getElementById("btnT1").onclick = function(){ S.timer.running ? timerPause() : timerStart(); };
+  document.getElementById("btnT2").onclick = timerReset;
+
+  document.getElementById("entries").innerHTML = S.teams.map(function(t, i){
+    var e = S.entries[i];
+    var locked = S.phase === "scored";
+    var sub = "";
+    if(S.phones){
+      sub = e.ans !== null
+        ? '<div class="subline"><span class="lab">Sent from phone</span>' + esc(e.ans) + "</div>"
+        : '<p class="await">Waiting for their phone…</p>';
+    }
+    return '<div class="entry' + (e.w !== null && e.v !== null ? " ready" : "") + '" style="--tc:' + TCOL[i] + '">' +
+      '<div class="ehead"><span class="swatch"></span>' +
+      '<input class="nameinput" data-team="' + i + '" value="' + esc(t.name) + '" maxlength="18" aria-label="Team name">' +
+      '<span class="escore num">' + t.score + "</span></div>" +
+      '<p class="elabel">Wager</p><div class="pickrow">' +
+      CHIPS.map(function(c){
+        var spent = S.used[i].indexOf(c) !== -1;
+        var on = e.w === c;
+        return '<button class="pick' + (on ? " on" : "") + '" data-w="' + c + '" data-t="' + i + '"' +
+          ((spent || locked) ? " disabled" : "") + ">" + c + "</button>";
+      }).join("") + "</div>" +
+      '<div class="vrow">' +
+      '<button class="vbtn yes' + (e.v === "right" ? " on" : "") + '" data-v="right" data-t="' + i + '"' + (locked ? " disabled" : "") + ">Right</button>" +
+      '<button class="vbtn nope' + (e.v === "wrong" ? " on" : "") + '" data-v="wrong" data-t="' + i + '"' + (locked ? " disabled" : "") + ">Wrong</button>" +
+      "</div>" + sub + "</div>";
+  }).join("");
+
+  Array.prototype.forEach.call(document.querySelectorAll(".pick"), function(btn){
+    btn.onclick = function(){
+      var i = +btn.dataset.t, w = +btn.dataset.w;
+      S.entries[i].w = (S.entries[i].w === w) ? null : w;
+      commit();
+    };
+  });
+  Array.prototype.forEach.call(document.querySelectorAll(".vbtn"), function(btn){
+    btn.onclick = function(){
+      var i = +btn.dataset.t, v = btn.dataset.v;
+      S.entries[i].v = (S.entries[i].v === v) ? null : v;
+      commit();
+    };
+  });
+  wireNames();
+}
+
+function scoreboardPanel(){
+  return '<div class="panel"><p class="eyebrow" style="margin:0 0 14px">Scores</p>' +
+    S.teams.map(function(t, i){
+      return '<div class="entry" style="--tc:' + TCOL[i] + '">' +
+        '<div class="ehead"><span class="swatch"></span>' +
+        '<input class="nameinput" data-team="' + i + '" value="' + esc(t.name) + '" maxlength="18" aria-label="Team name">' +
+        '<span class="escore num" style="font-size:26px;color:var(--paper)">' + t.score + "</span></div></div>";
+    }).join("") + "</div>";
+}
+function wireNames(){
+  Array.prototype.forEach.call(document.querySelectorAll(".nameinput"), function(inp){
+    inp.onchange = function(){
+      var v = inp.value.trim() || ("Team " + (+inp.dataset.team + 1));
+      S.teams[+inp.dataset.team].name = v;
+      commit();
+    };
+  });
+}
+
+document.getElementById("btnUndo").onclick = undo;
+document.getElementById("btnLobby").onclick = function(){
+  try { sessionStorage.removeItem("postit.role"); } catch(e){}
+  role = null;
+  ["host","tv","phone"].forEach(function(id){ document.getElementById(id).hidden = true; });
+  document.getElementById("lobby").hidden = false;
+};
+document.getElementById("tgPhones").onclick = function(){
+  if(!peerOk()) return;
+  S.phones = !S.phones;
+  commit();
+  if(S.phones) hostPeerStart();
+};
+document.getElementById("btnReset").onclick = function(){
+  var b = document.getElementById("btnReset");
+  if(!pendingConfirm){
+    pendingConfirm = true;
+    b.textContent = "Tap again to wipe";
+    b.classList.add("danger");
+    setTimeout(function(){
+      pendingConfirm = false;
+      if(document.getElementById("btnReset")) document.getElementById("btnReset").textContent = "Reset game";
+    }, 4000);
+    return;
+  }
+  pendingConfirm = false;
+  b.textContent = "Reset game";
+  resetGame();
+};
+
+document.addEventListener("keydown", function(ev){
+  if(role !== "host") return;
+  var t = ev.target;
+  if(t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA")) return;
+  var k = ev.key.toLowerCase();
+  if(k === " " || ev.code === "Space"){
+    ev.preventDefault();
+    S.timer.running ? timerPause() : timerStart();
+  } else if(k === "r" && S.phase === "asking"){
+    ev.preventDefault(); reveal();
+  } else if(ev.key === "Enter" && S.phase === "revealed"){
+    ev.preventDefault(); scoreIt();
+  } else if(k === "n"){
+    ev.preventDefault();
+    if(S.phase === "scored") advance();
+    else if(S.phase === "lobby") startGame();
+    else if(S.phase === "intro") startRound();
+    else if(S.phase === "roundEnd") nextRound();
+  }
+});
+
+/* ---- PHONE ---- */
+function renderPhone(){
+  var stage = document.getElementById("pStage");
+  var tag = document.getElementById("pTeamTag");
+
+  if(!peerOk()){
+    tag.hidden = true;
+    stage.innerHTML = '<div class="waitbox">Phone play isn\'t available here (PeerJS didn\'t load). Grab a post-it and hand your answer to the host.</div>';
+    return;
+  }
+  if(!connected){
+    tag.hidden = true;
+    var prev = document.getElementById("jCode");
+    var val = prev ? cleanCode(prev.value) : (peerCode || cleanCode(location.hash.slice(1)) || cleanCode(safeGet(sessionStorage, "postit.code")));
+    var busy = !!peer;
+    stage.innerHTML =
+      '<p class="eyebrow">Join the game</p>' +
+      '<p class="pq">Enter the four-character code from the TV.</p>' +
+      '<input class="linkin" id="jCode" value="' + esc(val) + '" placeholder="CODE" maxlength="4" autocapitalize="characters" autocomplete="off" spellcheck="false" aria-label="Game code" style="font-size:28px;padding:14px;letter-spacing:.3em;text-align:center;font-weight:700;text-transform:uppercase">' +
+      '<button class="btn primary big" id="jGo"' + (busy ? " disabled" : "") + '>' + (busy ? "Connecting\u2026" : "Connect") + '</button>' +
+      '<p class="hint" id="jMsg" style="margin:0;min-height:1.2em">' + esc(busy ? "" : (netMsg || "")) + '</p>';
+    var go = function(){
+      var c = cleanCode(document.getElementById("jCode").value);
+      if(c.length !== 4){ document.getElementById("jMsg").textContent = "Codes are four characters."; return; }
+      phoneConnect(c);
+    };
+    document.getElementById("jGo").onclick = go;
+    document.getElementById("jCode").onkeydown = function(ev){ if(ev.key === "Enter") go(); };
+    return;
+  }
+  if(S.phase === "lobby" && !S.phones){
+    tag.hidden = true;
+    stage.innerHTML = '<div class="waitbox">This game is running on post-it notes. Nothing to do here, grab a pen.</div>';
+    return;
+  }
+  if(S.phase === "lobby"){
+    tag.hidden = true;
+    if(myTeam !== null && S.claims[myTeam]){
+      stage.innerHTML = '<div class="locked"><b>You are in</b>' +
+        '<span class="ans" style="font-family:var(--hand);font-size:32px;line-height:1;color:' + TCOL[myTeam] + '">' +
+        esc(S.claims[myTeam]) + "</span>" +
+        '<span style="color:var(--muted);font-size:14px">Sit tight, the host starts it.</span></div>';
+      return;
+    }
+    stage.innerHTML =
+      '<p class="eyebrow">Claim a seat</p>' +
+      '<input class="linkin" id="jName" placeholder="Name your team" maxlength="18" style="font-size:17px;padding:14px">' +
+      '<div class="pteams">' + S.teams.map(function(t, i){
+        var c = S.claims[i];
+        return '<button class="pteam" data-i="' + i + '" style="--tc:' + TCOL[i] + '"' + (c ? " disabled" : "") + ">" +
+          (c ? esc(c) : "Take seat " + (i + 1)) + "</button>";
+      }).join("") + "</div>" +
+      '<p class="hint" id="jMsg" style="margin:0;min-height:1.2em"></p>';
+    Array.prototype.forEach.call(stage.querySelectorAll(".pteam"), function(b){
+      b.onclick = function(){
+        var msg = document.getElementById("jMsg");
+        var nm = document.getElementById("jName").value.trim();
+        if(!nm){ msg.textContent = "Name your team first."; return; }
+        var i = +b.dataset.i;
+        b.disabled = true;
+        msg.textContent = "Taking it…";
+        claimSeat(i, nm).then(function(ok){
+          if(ok){
+            myTeam = i;
+            safeSet(sessionStorage, "postit.team", String(myTeam));
+          } else {
+            msg.textContent = "Someone beat you to that seat. Try another.";
+            b.disabled = false;
+          }
+          renderPhone();
+        }).catch(function(){
+          msg.textContent = "Could not take that seat. Try again.";
+          b.disabled = false;
+        });
+      };
+    });
+    return;
+  }
+
+  if(myTeam === null){
+    var stored = safeGet(sessionStorage, "postit.team");
+    if(stored !== null && stored !== "") myTeam = +stored;
+  }
+  if(myTeam === null || isNaN(myTeam) || myTeam >= N()){
+    tag.hidden = true;
+    stage.innerHTML = '<p class="eyebrow">Who are you?</p><div class="pteams">' +
+      S.teams.map(function(t, i){
+        return '<button class="pteam" data-i="' + i + '" style="--tc:' + TCOL[i] + '">' + esc(t.name) + "</button>";
+      }).join("") + "</div>";
+    Array.prototype.forEach.call(stage.querySelectorAll(".pteam"), function(b){
+      b.onclick = function(){
+        myTeam = +b.dataset.i;
+        safeSet(sessionStorage, "postit.team", String(myTeam));
+        renderPhone();
+      };
+    });
+    return;
+  }
+
+  tag.hidden = false;
+  tag.textContent = S.teams[myTeam].name;
+  tag.style.color = TCOL[myTeam];
+
+  if(!S.phones){
+    stage.innerHTML = '<div class="waitbox">Phone submissions are switched off. The host is taking post-its.</div>';
+    return;
+  }
+  if(S.phase !== "asking"){
+    var msg = S.phase === "intro" ? "Round " + (S.round + 1) + " is about to start."
+      : S.phase === "final" ? "That's the game. Check the TV."
+      : S.phase === "roundEnd" ? "End of the round. Chips reset next."
+      : "Answer's in. Watch the TV.";
+    stage.innerHTML = '<div class="waitbox">' + esc(msg) + "</div>";
+    return;
+  }
+
+  var e = S.entries[myTeam];
+  if(e.ans !== null){
+    stage.innerHTML = '<div class="locked"><b>Locked in</b>' +
+      '<span class="ans">' + esc(e.ans) + "</span>" +
+      '<span style="color:var(--muted);font-size:14px">Wagered ' + (e.w === null ? "—" : e.w) + " points</span></div>" +
+      '<div class="waitbox" id="pClockBox">Time left <b id="pClock" class="num">1:00</b></div>';
+    return;
+  }
+
+  var free = avail(myTeam);
+  stage.innerHTML =
+    '<p class="eyebrow">Round ' + (S.round + 1) + " · Question " + (S.q + 1) + ' of 5 &nbsp;&nbsp; <span id="pClock" class="num">1:00</span></p>' +
+    '<p class="pq">' + esc(curQ().q) + "</p>" +
+    '<textarea class="pans" id="pAns" style="--tc:' + TCOL[myTeam] + '" placeholder="Your answer" maxlength="200"></textarea>' +
+    '<div><p class="elabel">Wager (each one once per round)</p><div class="pchips" id="pChips" style="--tc:' + TCOL[myTeam] + '">' +
+    CHIPS.map(function(c){
+      return '<button class="pchip" data-c="' + c + '"' + (free.indexOf(c) === -1 ? " disabled" : "") + ">" + c + "</button>";
+    }).join("") + "</div></div>" +
+    '<button class="btn primary big" id="pSend" disabled>Lock it in</button>';
+
+  var picked = null;
+  var ansEl = document.getElementById("pAns");
+  var sendEl = document.getElementById("pSend");
+  function sync(){ sendEl.disabled = !(picked !== null && ansEl.value.trim().length > 0); }
+  ansEl.oninput = sync;
+  Array.prototype.forEach.call(document.querySelectorAll(".pchip"), function(b){
+    b.onclick = function(){
+      picked = +b.dataset.c;
+      Array.prototype.forEach.call(document.querySelectorAll(".pchip"), function(x){
+        x.classList.toggle("on", +x.dataset.c === picked);
+      });
+      sync();
+    };
+  });
+  sendEl.onclick = function(){
+    if(picked === null || !ansEl.value.trim()) return;
+    sendEl.disabled = true;
+    sendEl.textContent = "Sending…";
+    var ans = ansEl.value.trim().slice(0, 200);
+    if(sendAnswer(ans, picked)){
+      S.entries[myTeam].ans = ans;
+      S.entries[myTeam].w = picked;
+      renderPhone();
+    } else {
+      sendEl.disabled = false;
+      sendEl.textContent = "Didn't send. Try again";
+    }
+  };
+}
+document.getElementById("pSwitch").onclick = function(){
+  myTeam = null;
+  try { sessionStorage.removeItem("postit.team"); } catch(e){}
+  renderPhone();
+};
+
+/* ============ BOOT ============ */
+(function boot(){
+  var saved = safeGet(sessionStorage, "postit.role");
+  if(saved === "host" || saved === "tv" || saved === "phone"){ setRole(saved); return; }
+  var h = location.hash.replace("#", "");
+  if(h.length === 4 && cleanCode(h).length === 4) setRole("phone");
+})();
+</script>
+</body>
+</html>
