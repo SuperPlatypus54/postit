@@ -402,6 +402,17 @@ input,textarea{font:inherit;color:inherit}
 /* ---------- phone link (PeerJS) ---------- */
 .codebig{font-family:var(--disp);font-weight:800;font-size:44px;letter-spacing:.18em;line-height:1;margin:10px 0 4px}
 .netmsg{font-size:12.5px;color:var(--no);margin:8px 0 0}
+
+/* ---------- host flow (scoring) ---------- */
+.steps{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:0 0 12px;font-size:11px;letter-spacing:.14em;text-transform:uppercase;font-weight:700;color:var(--muted)}
+.steps .step{padding:3px 9px;border-radius:20px;border:1px solid var(--line)}
+.steps .step.on{color:#1A1810;background:var(--t1);border-color:var(--t1)}
+.steps .step.done{color:var(--paper);opacity:.5}
+.steps .step-arrow{color:var(--line)}
+.mainact{min-width:190px}
+.entry.problem{border-color:var(--no);box-shadow:0 0 0 1px var(--no) inset}
+@keyframes scorepulse{0%,100%{transform:scale(1);box-shadow:none}50%{transform:scale(1.06);box-shadow:0 0 0 10px rgba(242,206,69,.28)}}
+.btn.pulse{animation:scorepulse .55s ease 2}
 </style>
 </head>
 <body>
@@ -577,6 +588,9 @@ var peerCode = null;
 var peerTries = 0;
 var everConnected = false;
 var kickMsg = null;
+var scoreProblem = null;
+var pulseScore = false;
+var pending = null;
 var pendingConfirm = false;
 
 function safeGet(store, k){ try { return store.getItem(k); } catch(e){ return null; } }
@@ -759,11 +773,14 @@ function hostOnData(c, m){
     send(c, { t:"claimResult", seat:i, ok:!!ok });
     if(!ok) send(c, { t:"state", state:slimState() });
   } else if(m.t === "answer"){
-    if(!S.phones || S.phase !== "asking") return;
+    if(!S.phones) return;
     if(m.round !== S.round || m.q !== S.q) return;
     var t = m.seat;
     if(typeof t !== "number" || t < 0 || t >= N()) return;
+    var late = S.phase === "revealed";
+    if(S.phase !== "asking" && !(late && S.entries[t].ans === null)) return;
     S.entries[t].ans = String(m.answer || "").slice(0, 300);
+    S.entries[t].late = late;
     if(CHIPS.indexOf(m.wager) !== -1 && S.used[t].indexOf(m.wager) === -1) S.entries[t].w = m.wager;
     commit();
   }
@@ -874,6 +891,8 @@ function phoneOnData(m){
     var d = m.state;
     d.history = [];
     S = d;
+    if(pending && (pending.round !== S.round || pending.q !== S.q)) pending = null;
+    if(pending && myTeam !== null && S.entries[myTeam] && S.entries[myTeam].ans !== null) pending = null;
     render();
   } else if(m.t === "kicked"){
     if(myTeam !== null && m.seat !== myTeam) return;
@@ -1020,8 +1039,32 @@ function reveal(){
   S.phase = "revealed";
   commit();
 }
+function incomplete(){
+  return S.entries.map(function(e, i){ return (e.w === null || e.v === null) ? i : -1; })
+    .filter(function(i){ return i !== -1; });
+}
+function problemText(list){
+  return list.map(function(i){
+    var e = S.entries[i];
+    var needs = (e.w === null && e.v === null) ? "a chip and Right or Wrong" : (e.w === null ? "a chip" : "Right or Wrong");
+    return S.teams[i].name + " needs " + needs;
+  }).join("; ");
+}
+function stepsHtml(){
+  var cur = S.phase === "asking" ? 0 : (S.phase === "revealed" ? 1 : 3);
+  return '<div class="steps" aria-label="Question flow">' + ["Ask", "Reveal", "Score", "Next"].map(function(l, i){
+    var cls = i === cur ? " on" : (i < cur ? " done" : "");
+    return (i ? '<span class="step-arrow">\u2192</span>' : "") + '<span class="step' + cls + '">' + l + "</span>";
+  }).join("") + "</div>";
+}
 function scoreIt(){
-  if(!allReady()) return;
+  if(S.phase !== "revealed") return;
+  if(!allReady()){
+    scoreProblem = incomplete();
+    renderHost();
+    return;
+  }
+  scoreProblem = null;
   S.history.push({
     round:S.round, q:S.q,
     scores:S.teams.map(function(t){ return t.score; }),
@@ -1315,17 +1358,21 @@ function renderHost(){
     return;
   }
 
-  var ready = allReady();
+  if(S.phase !== "revealed") scoreProblem = null;
+  var probs = scoreProblem ? scoreProblem.filter(function(i){ var e = S.entries[i]; return e && (e.w === null || e.v === null); }) : [];
+  if(!probs.length) scoreProblem = null;
   if(S.phase === "asking"){
-    mainBtn = '<button class="btn primary big" id="btnReveal">Reveal answer</button>';
+    mainBtn = '<button class="btn primary big mainact" id="btnReveal">Reveal answer</button>';
   } else if(S.phase === "revealed"){
-    mainBtn = '<button class="btn primary big" id="btnScore"' + (ready ? "" : " disabled") + ">Score it</button>";
-    if(!ready) extra = '<span class="hint" style="margin:0">Every team needs a chip and a verdict first.</span>';
+    mainBtn = '<button class="btn primary big mainact' + (pulseScore ? " pulse" : "") + '" id="btnScore">Score it</button>';
+    pulseScore = false;
+    if(probs.length) extra = '<p class="netmsg" id="scoreMsg" style="flex-basis:100%;margin:2px 0 0">' + esc(problemText(probs)) + "</p>";
   } else if(S.phase === "scored"){
-    mainBtn = '<button class="btn primary big" id="btnNext">' + (S.q < 4 ? "Next question" : "End of round") + "</button>";
+    mainBtn = '<button class="btn primary big mainact" id="btnNext">' + (S.q < 4 ? "Next question" : "End of round") + "</button>";
   }
 
   p.innerHTML =
+    stepsHtml() +
     '<div class="qhead"><span class="eyebrow">Q' + (S.q + 1) + ' of 5</span>' +
     '<span class="cat">' + esc(r.title) + "</span>" +
     '<span class="diff d' + qq.d + '">' + DIFF[qq.d] + "</span></div>" +
@@ -1353,10 +1400,10 @@ function renderHost(){
     var sub = "";
     if(S.phones){
       sub = e.ans !== null
-        ? '<div class="subline"><span class="lab">Sent from phone</span>' + esc(e.ans) + "</div>"
+        ? '<div class="subline"><span class="lab">Sent from phone' + (e.late ? " \u00b7 after reveal" : "") + '</span>' + esc(e.ans) + "</div>"
         : '<p class="await">Waiting for their phone…</p>';
     }
-    return '<div class="entry' + (e.w !== null && e.v !== null ? " ready" : "") + '" style="--tc:' + TCOL[i] + '">' +
+    return '<div class="entry' + (e.w !== null && e.v !== null ? " ready" : "") + (probs.indexOf(i) !== -1 ? " problem" : "") + '" style="--tc:' + TCOL[i] + '">' +
       '<div class="ehead"><span class="swatch"></span>' +
       '<input class="nameinput" data-team="' + i + '" value="' + esc(t.name) + '" maxlength="18" aria-label="Team name">' +
       '<span class="escore num">' + t.score + "</span></div>" +
@@ -1376,14 +1423,18 @@ function renderHost(){
   Array.prototype.forEach.call(document.querySelectorAll(".pick"), function(btn){
     btn.onclick = function(){
       var i = +btn.dataset.t, w = +btn.dataset.w;
+      var was = allReady();
       S.entries[i].w = (S.entries[i].w === w) ? null : w;
+      if(!was && S.phase === "revealed" && allReady()) pulseScore = true;
       commit();
     };
   });
   Array.prototype.forEach.call(document.querySelectorAll(".vbtn"), function(btn){
     btn.onclick = function(){
       var i = +btn.dataset.t, v = btn.dataset.v;
+      var was = allReady();
       S.entries[i].v = (S.entries[i].v === v) ? null : v;
+      if(!was && S.phase === "revealed" && allReady()) pulseScore = true;
       commit();
     };
   });
@@ -1569,6 +1620,21 @@ function renderPhone(){
     stage.innerHTML = '<div class="waitbox">Phone submissions are switched off. The host is taking post-its.</div>';
     return;
   }
+  var unconfirmed = pending && pending.round === S.round && pending.q === S.q &&
+    S.entries[myTeam] && S.entries[myTeam].ans === null;
+  if(unconfirmed && S.phase !== "asking" && S.phase !== "revealed"){
+    stage.innerHTML = '<div class="locked" style="border-color:rgba(233,105,95,.5);background:rgba(233,105,95,.08)"><b style="color:var(--no)">Didn\'t reach the host in time</b>' +
+      '<span class="ans">Tell them: ' + esc(pending.ans) + ", wager " + pending.w + "</span>" +
+      '<span style="color:var(--muted);font-size:14px">The host can still enter it by hand.</span></div>';
+    return;
+  }
+  if(unconfirmed){
+    stage.innerHTML = '<div class="locked" style="border-color:var(--line);background:var(--ink2)"><b style="color:var(--muted)">Sent, waiting for the host</b>' +
+      '<span class="ans">' + esc(pending.ans) + "</span>" +
+      '<span style="color:var(--muted);font-size:14px">Wagered ' + pending.w + " points. Hang on\u2026</span></div>" +
+      '<div class="waitbox" id="pClockBox">Time left <b id="pClock" class="num">1:00</b></div>';
+    return;
+  }
   if(S.phase !== "asking"){
     var msg = S.phase === "intro" ? "Round " + (S.round + 1) + " is about to start."
       : S.phase === "final" ? "That's the game. Check the TV."
@@ -1622,8 +1688,7 @@ function renderPhone(){
     sendEl.textContent = "Sending…";
     var ans = ansEl.value.trim().slice(0, 200);
     if(sendAnswer(ans, picked)){
-      S.entries[myTeam].ans = ans;
-      S.entries[myTeam].w = picked;
+      pending = { round:S.round, q:S.q, ans:ans, w:picked };
       renderPhone();
     } else {
       sendEl.disabled = false;
