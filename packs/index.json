@@ -2,5 +2,9 @@
   {
     "file": "general-knowledge-1.json",
     "name": "General Knowledge Vol. 1"
+  },
+  {
+    "file": "weird-but-true.json",
+    "name": "Weird But True"
   }
 ]

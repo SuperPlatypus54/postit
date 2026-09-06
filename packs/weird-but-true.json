@@ -1,0 +1,155 @@
+{
+  "name": "Weird But True",
+  "rounds": [
+    {
+      "title": "Animals Being Weird",
+      "questions": [
+        {
+          "q": "What is a group of flamingos called?",
+          "a": "A flamboyance",
+          "d": 1
+        },
+        {
+          "q": "What color is a polar bear's skin underneath all that white fur?",
+          "a": "Black",
+          "d": 1
+        },
+        {
+          "q": "Which animal's fingerprints are so close to a human's that they have confused crime scene investigators?",
+          "a": "The koala",
+          "d": 2
+        },
+        {
+          "q": "Which animal has the largest eyes of any land animal?",
+          "a": "The ostrich",
+          "d": 2
+        },
+        {
+          "q": "Wombat droppings come out in what unusual shape?",
+          "a": "Cubes",
+          "d": 3
+        }
+      ]
+    },
+    {
+      "title": "Food, Sort Of",
+      "questions": [
+        {
+          "q": "Which nut is marzipan made from?",
+          "a": "Almonds",
+          "d": 1
+        },
+        {
+          "q": "Peanuts are not actually nuts. Botanically, what are they?",
+          "a": "Legumes (like beans and peas)",
+          "d": 1
+        },
+        {
+          "q": "Hawaiian pizza, with ham and pineapple, was invented in which country?",
+          "a": "Canada (Ontario, 1962)",
+          "d": 2
+        },
+        {
+          "q": "Which food, found still edible in ancient Egyptian tombs, famously never spoils?",
+          "a": "Honey",
+          "d": 2
+        },
+        {
+          "q": "Before Dutch growers made orange the standard in the 1600s, what color were most carrots?",
+          "a": "Purple (also white and yellow)",
+          "d": 3
+        }
+      ]
+    },
+    {
+      "title": "Numbers That Shouldn't Be",
+      "questions": [
+        {
+          "q": "How many hearts does an octopus have?",
+          "a": "Three",
+          "d": 1
+        },
+        {
+          "q": "How many sides does a stop sign have?",
+          "a": "Eight",
+          "d": 1
+        },
+        {
+          "q": "How many bones are in a shark's body?",
+          "a": "None, a shark's skeleton is all cartilage",
+          "d": 2
+        },
+        {
+          "q": "Which number sits at the very top of a standard dartboard?",
+          "a": "20",
+          "d": 2
+        },
+        {
+          "q": "In medieval timekeeping a \"moment\" was an actual unit. Roughly how long was it?",
+          "a": "About 90 seconds (one fortieth of an hour)",
+          "d": 3
+        }
+      ]
+    },
+    {
+      "title": "Words and Where They Came From",
+      "questions": [
+        {
+          "q": "What do the letters in the distress signal SOS stand for?",
+          "a": "Nothing, it was chosen because the Morse code pattern is easy to recognize",
+          "d": 1
+        },
+        {
+          "q": "The word \"salary\" comes from the Latin word for which everyday substance?",
+          "a": "Salt",
+          "d": 1
+        },
+        {
+          "q": "The word \"muscle\" comes from the Latin for \"little\" what?",
+          "a": "Mouse (musculus)",
+          "d": 2
+        },
+        {
+          "q": "The little dot above a lowercase i or j has its own name. What is it?",
+          "a": "A tittle",
+          "d": 2
+        },
+        {
+          "q": "What is the word for the smell of rain falling on dry ground?",
+          "a": "Petrichor",
+          "d": 3
+        }
+      ]
+    },
+    {
+      "title": "Odd Facts About Famous Things",
+      "questions": [
+        {
+          "q": "Which world famous landmark was built to be temporary, for the 1889 World's Fair?",
+          "a": "The Eiffel Tower",
+          "d": 1
+        },
+        {
+          "q": "What color is an airplane's \"black box\" flight recorder?",
+          "a": "Bright orange",
+          "d": 1
+        },
+        {
+          "q": "Botanically speaking, which one is actually a berry: a banana or a strawberry?",
+          "a": "The banana",
+          "d": 2
+        },
+        {
+          "q": "Nintendo was founded in 1889. What did it make back then?",
+          "a": "Playing cards (hanafuda)",
+          "d": 2
+        },
+        {
+          "q": "What was the first toy ever advertised on American television, in 1952?",
+          "a": "Mr. Potato Head",
+          "d": 3
+        }
+      ]
+    }
+  ]
+}
