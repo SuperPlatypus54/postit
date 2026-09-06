@@ -576,6 +576,7 @@ var reconnectDelay = 2000;
 var peerCode = null;
 var peerTries = 0;
 var everConnected = false;
+var kickMsg = null;
 var pendingConfirm = false;
 
 function safeGet(store, k){ try { return store.getItem(k); } catch(e){ return null; } }
@@ -595,7 +596,7 @@ if(!S.history) S.history = [];
 if(!S.timer) S.timer = { running:false, remaining:FULL, endsAt:0 };
 if(!S.claims || S.claims.length !== S.teams.length) S.claims = fill(S.teams.length, function(){ return null; });
 delete S.joinUrl;
-if(typeof S.code !== "string" || S.code.length !== 4) S.code = null;
+if(typeof S.code !== "string" || S.code.length !== 6) S.code = null;
 if(!S.gid) S.gid = Date.now();
 
 var bc = null;
@@ -635,21 +636,38 @@ function commit(){
 
 /* ============ PEER (phone mode) ============ */
 var ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+var CODE_LEN = 6;
 function makeCode(){
   var out = "", i;
   try {
-    var buf = new Uint32Array(4);
+    var buf = new Uint32Array(CODE_LEN);
     crypto.getRandomValues(buf);
-    for(i = 0; i < 4; i++) out += ALPHABET[buf[i] % ALPHABET.length];
+    for(i = 0; i < CODE_LEN; i++) out += ALPHABET[buf[i] % ALPHABET.length];
     return out;
   } catch(e){}
-  for(i = 0; i < 4; i++) out += ALPHABET[Math.floor(Math.random() * ALPHABET.length)];
+  for(i = 0; i < CODE_LEN; i++) out += ALPHABET[Math.floor(Math.random() * ALPHABET.length)];
   return out;
 }
 function cleanCode(s){
   return String(s || "").toUpperCase().split("").filter(function(c){
     return ALPHABET.indexOf(c) !== -1;
-  }).join("").slice(0, 4);
+  }).join("").slice(0, CODE_LEN);
+}
+function fmtCode(c){
+  c = String(c || "");
+  return c.length === CODE_LEN ? c.slice(0, 3) + " " + c.slice(3) : c;
+}
+/* Relay id = "pi-" + 64-bit FNV-1a of the code. Readable code on screen, non-enumerable id on the relay. */
+function fnv1a(str, seed){
+  var h = seed >>> 0;
+  for(var i = 0; i < str.length; i++){
+    h ^= str.charCodeAt(i);
+    h = Math.imul(h, 16777619) >>> 0;
+  }
+  return ("00000000" + h.toString(16)).slice(-8);
+}
+function peerId(code){
+  return "pi-" + fnv1a("postit:" + code, 0x811c9dc5) + fnv1a(code + ":postit", 0x1b873593);
 }
 function peerOk(){ return typeof window.Peer === "function"; }
 function pageUrl(){ return location.origin + location.pathname; }
@@ -685,14 +703,13 @@ function hostPeerStart(){
   if(role !== "host" || !peerOk() || peer) return;
   var code = S.code || makeCode();
   peerCode = code;
-  var p = new Peer("postit-" + code, { debug:1 });
+  var p = new Peer(peerId(code), { debug:1 });
   peer = p;
-  p.on("open", function(id){
+  p.on("open", function(){
     if(peer !== p) return;
     peerTries = 0;
-    var got = String(id).replace(/^postit-/, "");
     netMsg = null;
-    if(S.code !== got) S.code = got;
+    if(S.code !== code) S.code = code;
     commit();
   });
   p.on("connection", function(c){
@@ -728,6 +745,7 @@ function hostPeerStart(){
 function hostOnData(c, m){
   if(!m || typeof m !== "object") return;
   if(m.t === "hello"){
+    if(typeof m.seat === "number" && m.seat >= 0 && m.seat < N() && S.claims[m.seat]) c._seat = m.seat;
     send(c, { t:"state", state:slimState() });
   } else if(m.t === "claim"){
     var i = m.seat, nm = String(m.name || "").trim().slice(0, 18);
@@ -735,6 +753,7 @@ function hostOnData(c, m){
     if(ok){
       S.claims[i] = nm;
       S.teams[i].name = nm;
+      c._seat = i;
       commit();
     }
     send(c, { t:"claimResult", seat:i, ok:!!ok });
@@ -750,6 +769,20 @@ function hostOnData(c, m){
   }
 }
 
+function kickSeat(i, silent){
+  if(typeof i !== "number" || i < 0 || i >= N()) return;
+  S.claims[i] = null;
+  S.teams[i].name = "Team " + (i + 1);
+  conns.forEach(function(c){
+    if(c._seat === i){ send(c, { t:"kicked", seat:i }); c._seat = null; }
+  });
+  if(!silent) commit();
+}
+function clearSeats(){
+  for(var i = 0; i < N(); i++) kickSeat(i, true);
+  commit();
+}
+
 /* ---- phone: connects to the host by code ---- */
 function phoneSeat(){
   var s = safeGet(sessionStorage, "postit.team");
@@ -758,8 +791,8 @@ function phoneSeat(){
 function phoneBoot(){
   if(myTeam === null) myTeam = phoneSeat();
   var code = cleanCode(location.hash.slice(1));
-  if(code.length !== 4) code = cleanCode(safeGet(sessionStorage, "postit.code"));
-  if(code.length === 4) phoneConnect(code);
+  if(code.length !== CODE_LEN) code = cleanCode(safeGet(sessionStorage, "postit.code"));
+  if(code.length === CODE_LEN) phoneConnect(code);
   else renderPhone();
 }
 function phoneStop(){
@@ -771,7 +804,7 @@ function phoneStop(){
 }
 function phoneConnect(code){
   code = cleanCode(code);
-  if(code.length !== 4 || !peerOk()) return;
+  if(code.length !== CODE_LEN || !peerOk()) return;
   phoneStop();
   if(code !== peerCode) everConnected = false;
   peerCode = code;
@@ -782,7 +815,7 @@ function phoneConnect(code){
   peer = p;
   p.on("open", function(){
     if(peer !== p) return;
-    var c = p.connect("postit-" + code, { reliable:true, serialization:"json" });
+    var c = p.connect(peerId(code), { reliable:true, serialization:"json" });
     conn = c;
     c.on("open", function(){
       if(conn !== c) return;
@@ -808,7 +841,7 @@ function phoneConnect(code){
     if(type === "peer-unavailable"){
       if(everConnected){ phoneLost("Can't find the host right now. Retrying\u2026"); return; }
       phoneStop();
-      netMsg = "No game with code " + code + ". Check the code on the TV.";
+      netMsg = "No game with code " + fmtCode(code) + ". Check the code on the TV.";
       renderPhone();
       return;
     }
@@ -841,6 +874,12 @@ function phoneOnData(m){
     var d = m.state;
     d.history = [];
     S = d;
+    render();
+  } else if(m.t === "kicked"){
+    if(myTeam !== null && m.seat !== myTeam) return;
+    myTeam = null;
+    try { sessionStorage.removeItem("postit.team"); } catch(e){}
+    kickMsg = "The host removed you from that seat. Pick another.";
     render();
   } else if(m.t === "claimResult" && claimWaiter && claimWaiter.seat === m.seat){
     var w = claimWaiter; claimWaiter = null;
@@ -1105,7 +1144,7 @@ function renderTv(){
       '<p class="tv-msg" style="font-size:clamp(28px,4.2vw,62px);margin-bottom:clamp(14px,2vh,26px)">' +
       '<small>Scan to claim a team</small>' + N() + ' seats</p>' +
       '<p class="tv-lede" style="margin:0 0 clamp(14px,2vh,26px)">' +
-        (S.code ? 'Or open <b>' + esc(pageUrl()) + '</b> and enter code <b class="num" style="color:var(--t1);letter-spacing:.12em">' + esc(S.code) + '</b>' : 'Waiting for the host to open the phone link\u2026') + '</p>' +
+        (S.code ? 'Or open <b>' + esc(pageUrl()) + '</b> and enter code <b class="num" style="color:var(--t1);letter-spacing:.12em">' + esc(fmtCode(S.code)) + '</b>' : 'Waiting for the host to open the phone link\u2026') + '</p>' +
       '<div class="tv-slots">' + S.teams.map(function(t, i){
         var c = S.claims[i];
         return '<div class="tv-slot' + (c ? " filled" : "") + '" style="--tc:' + TCOL[i] + '">' +
@@ -1170,7 +1209,7 @@ function renderHost(){
     "Round " + (S.round + 1) + " · Q" + (S.q + 1));
   var hp = document.getElementById("hPhones");
   hp.hidden = !S.phones;
-  hp.textContent = netMsg ? "Phones offline" : (S.code ? "Phones on \u00b7 " + S.code : "Phones on");
+  hp.textContent = netMsg ? "Phones offline" : (S.code ? "Phones on \u00b7 " + fmtCode(S.code) : "Phones on");
   document.getElementById("btnUndo").disabled = S.history.length === 0;
 
   var tg = document.getElementById("tgPhones");
@@ -1204,7 +1243,7 @@ function renderHost(){
         '<div class="joinwrap" style="padding-top:16px;border-top:1px solid var(--line)"><div>' +
           '<div class="qrbox" id="hQr"></div>' +
           '<p class="elabel" style="margin:14px 0 0">Game code</p>' +
-          '<div class="codebig num">' + (S.code ? esc(S.code) : "\u00b7\u00b7\u00b7\u00b7") + '</div>' +
+          '<div class="codebig num">' + (S.code ? esc(fmtCode(S.code)) : "\u00b7\u00b7\u00b7 \u00b7\u00b7\u00b7") + '</div>' +
           '<p class="hint" style="margin:8px 0 0;max-width:340px">' +
             (S.code ? "Phones scan the code, or open <b>" + esc(pageUrl()) + "</b> and type it in." : "Starting the phone link\u2026") + '</p>' +
           (netMsg ? '<p class="netmsg">' + esc(netMsg) + '</p>' : "") +
@@ -1213,7 +1252,8 @@ function renderHost(){
           S.teams.map(function(t, i){
             var c = S.claims[i];
             return '<div class="slot' + (c ? " filled" : "") + '" style="--tc:' + TCOL[i] + '"><span class="dot"></span>' +
-              (c ? '<span class="who">' + esc(c) + "</span>" : '<span class="empty">Waiting for a scan…</span>') + "</div>";
+              (c ? '<span class="who">' + esc(c) + "</span>" : '<span class="empty">Waiting for a scan…</span>') +
+              (c ? '<button class="btn ghost" data-kick="' + i + '" aria-label="Kick ' + esc(c) + '" style="margin-left:auto;padding:4px 10px;font-size:12px">Kick</button>' : "") + "</div>";
           }).join("") + "</div>" +
           '<div class="actions" style="margin-top:18px"><button class="btn primary big" id="btnGo">Start the game</button>' +
           '<button class="btn ghost" id="btnClearJoin">Clear seats</button></div>' +
@@ -1232,10 +1272,10 @@ function renderHost(){
     document.getElementById("btnGo").onclick = startGame;
     if(S.phones){
       drawQr(document.getElementById("hQr"), S.code ? joinUrl() : "", 340);
-      document.getElementById("btnClearJoin").onclick = function(){
-        S.claims = fill(N(), function(){ return null; });
-        commit();
-      };
+      document.getElementById("btnClearJoin").onclick = clearSeats;
+      Array.prototype.forEach.call(document.querySelectorAll("[data-kick]"), function(b){
+        b.onclick = function(){ kickSeat(+b.dataset.kick); };
+      });
     }
     document.getElementById("entries").innerHTML = scoreboardPanel();
     wireNames();
@@ -1437,13 +1477,13 @@ function renderPhone(){
     var busy = !!peer;
     stage.innerHTML =
       '<p class="eyebrow">Join the game</p>' +
-      '<p class="pq">Enter the four-character code from the TV.</p>' +
-      '<input class="linkin" id="jCode" value="' + esc(val) + '" placeholder="CODE" maxlength="4" autocapitalize="characters" autocomplete="off" spellcheck="false" aria-label="Game code" style="font-size:28px;padding:14px;letter-spacing:.3em;text-align:center;font-weight:700;text-transform:uppercase">' +
+      '<p class="pq">Enter the six-character code from the TV.</p>' +
+      '<input class="linkin" id="jCode" value="' + esc(val) + '" placeholder="CODE" maxlength="7" autocapitalize="characters" autocomplete="off" spellcheck="false" aria-label="Game code" style="font-size:28px;padding:14px;letter-spacing:.3em;text-align:center;font-weight:700;text-transform:uppercase">' +
       '<button class="btn primary big" id="jGo"' + (busy ? " disabled" : "") + '>' + (busy ? "Connecting\u2026" : "Connect") + '</button>' +
       '<p class="hint" id="jMsg" style="margin:0;min-height:1.2em">' + esc(busy ? "" : (netMsg || "")) + '</p>';
     var go = function(){
       var c = cleanCode(document.getElementById("jCode").value);
-      if(c.length !== 4){ document.getElementById("jMsg").textContent = "Codes are four characters."; return; }
+      if(c.length !== CODE_LEN){ document.getElementById("jMsg").textContent = "Codes are six characters."; return; }
       phoneConnect(c);
     };
     document.getElementById("jGo").onclick = go;
@@ -1464,15 +1504,16 @@ function renderPhone(){
         '<span style="color:var(--muted);font-size:14px">Sit tight, the host starts it.</span></div>';
       return;
     }
+    var keepName = document.getElementById("jName") ? document.getElementById("jName").value : "";
     stage.innerHTML =
       '<p class="eyebrow">Claim a seat</p>' +
-      '<input class="linkin" id="jName" placeholder="Name your team" maxlength="18" style="font-size:17px;padding:14px">' +
+      '<input class="linkin" id="jName" value="' + esc(keepName) + '" placeholder="Name your team" maxlength="18" style="font-size:17px;padding:14px">' +
       '<div class="pteams">' + S.teams.map(function(t, i){
         var c = S.claims[i];
         return '<button class="pteam" data-i="' + i + '" style="--tc:' + TCOL[i] + '"' + (c ? " disabled" : "") + ">" +
           (c ? esc(c) : "Take seat " + (i + 1)) + "</button>";
       }).join("") + "</div>" +
-      '<p class="hint" id="jMsg" style="margin:0;min-height:1.2em"></p>';
+      '<p class="hint" id="jMsg" style="margin:0;min-height:1.2em">' + esc(kickMsg || "") + '</p>';
     Array.prototype.forEach.call(stage.querySelectorAll(".pteam"), function(b){
       b.onclick = function(){
         var msg = document.getElementById("jMsg");
@@ -1484,6 +1525,7 @@ function renderPhone(){
         claimSeat(i, nm).then(function(ok){
           if(ok){
             myTeam = i;
+            kickMsg = null;
             safeSet(sessionStorage, "postit.team", String(myTeam));
           } else {
             msg.textContent = "Someone beat you to that seat. Try another.";
@@ -1546,21 +1588,25 @@ function renderPhone(){
   }
 
   var free = avail(myTeam);
+  var keepAns = document.getElementById("pAns") ? document.getElementById("pAns").value : "";
+  var keepPickEl = document.querySelector(".pchip.on");
+  var keepPick = keepPickEl && free.indexOf(+keepPickEl.dataset.c) !== -1 ? +keepPickEl.dataset.c : null;
   stage.innerHTML =
     '<p class="eyebrow">Round ' + (S.round + 1) + " · Question " + (S.q + 1) + ' of 5 &nbsp;&nbsp; <span id="pClock" class="num">1:00</span></p>' +
     '<p class="pq">' + esc(curQ().q) + "</p>" +
-    '<textarea class="pans" id="pAns" style="--tc:' + TCOL[myTeam] + '" placeholder="Your answer" maxlength="200"></textarea>' +
+    '<textarea class="pans" id="pAns" style="--tc:' + TCOL[myTeam] + '" placeholder="Your answer" maxlength="200">' + esc(keepAns) + '</textarea>' +
     '<div><p class="elabel">Wager (each one once per round)</p><div class="pchips" id="pChips" style="--tc:' + TCOL[myTeam] + '">' +
     CHIPS.map(function(c){
-      return '<button class="pchip" data-c="' + c + '"' + (free.indexOf(c) === -1 ? " disabled" : "") + ">" + c + "</button>";
+      return '<button class="pchip' + (c === keepPick ? " on" : "") + '" data-c="' + c + '"' + (free.indexOf(c) === -1 ? " disabled" : "") + ">" + c + "</button>";
     }).join("") + "</div></div>" +
     '<button class="btn primary big" id="pSend" disabled>Lock it in</button>';
 
-  var picked = null;
+  var picked = keepPick;
   var ansEl = document.getElementById("pAns");
   var sendEl = document.getElementById("pSend");
   function sync(){ sendEl.disabled = !(picked !== null && ansEl.value.trim().length > 0); }
   ansEl.oninput = sync;
+  sync();
   Array.prototype.forEach.call(document.querySelectorAll(".pchip"), function(b){
     b.onclick = function(){
       picked = +b.dataset.c;
@@ -1596,7 +1642,7 @@ document.getElementById("pSwitch").onclick = function(){
   var saved = safeGet(sessionStorage, "postit.role");
   if(saved === "host" || saved === "tv" || saved === "phone"){ setRole(saved); return; }
   var h = location.hash.replace("#", "");
-  if(h.length === 4 && cleanCode(h).length === 4) setRole("phone");
+  if(h.length === CODE_LEN && cleanCode(h).length === CODE_LEN) setRole("phone");
 })();
 </script>
 </body>
