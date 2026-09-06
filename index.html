@@ -418,7 +418,7 @@ input,textarea{font:inherit;color:inherit}
 <body>
 <div id="lobby" class="screen">
   <div class="lobby-inner">
-    <p class="eyebrow" style="margin:0 0 14px">Five rounds &middot; Five questions &middot; Two to six teams</p>
+    <p class="eyebrow" id="lobbyEyebrow" style="margin:0 0 14px">Five rounds &middot; Five questions &middot; Two to six teams</p>
     <h1 class="wordmark">Post<em>-</em>It</h1>
     <p class="lobby-sub">Every round you get one 2, one 4, one 6, one 8 and one 10. Spend each exactly once. Nail the question, bank the chip. Blow your 10 on the easy one and you'll be sorry.</p>
     <div class="roles">
@@ -446,7 +446,7 @@ input,textarea{font:inherit;color:inherit}
 <div id="tv" class="screen" hidden>
   <div class="tv-top">
     <div>
-      <div class="tv-round" id="tvRound">Round 1 of 5</div>
+      <div class="tv-round" id="tvRound">Round 1</div>
       <div class="tv-cat" id="tvCat">History</div>
     </div>
     <div class="tv-pips" id="tvPips"></div>
@@ -499,47 +499,112 @@ input,textarea{font:inherit;color:inherit}
   <div class="pstage" id="pStage"></div>
 </div>
 
+<script type="application/json" id="fallbackPack">{"name":"General Knowledge Vol. 1","rounds":[{"title":"History","questions":[{"q":"In what year did the Berlin Wall fall?","a":"1989","d":1},{"q":"Who was the first woman to win a Nobel Prize?","a":"Marie Curie (Physics, 1903)","d":1},{"q":"The Rosetta Stone carries the same decree in three scripts. Name any two.","a":"Hieroglyphic, Demotic, Ancient Greek","d":2},{"q":"The 1494 Treaty of Tordesillas divided newly explored lands between which two countries?","a":"Spain and Portugal","d":3},{"q":"Mansa Musa, famous for his staggering wealth, ruled which West African empire?","a":"The Mali Empire","d":3}]},{"title":"Science & Nature","questions":[{"q":"What is the most abundant gas in Earth's atmosphere?","a":"Nitrogen (about 78 percent)","d":1},{"q":"How many bones are in the adult human body?","a":"206","d":1},{"q":"What is the only metal that is liquid at room temperature?","a":"Mercury","d":2},{"q":"What is the chemical symbol for tungsten?","a":"W, from its German name wolfram","d":3},{"q":"Which scientist identified the electron, in 1897?","a":"J.J. Thomson","d":3}]},{"title":"Geography","questions":[{"q":"Mount Kilimanjaro, the highest peak in Africa, is in which country?","a":"Tanzania","d":1},{"q":"What is the capital of Australia?","a":"Canberra","d":1},{"q":"Which two countries share the longest international border in the world?","a":"The United States and Canada","d":2},{"q":"What is the smallest country in the world by land area?","a":"Vatican City","d":2},{"q":"Lake Baikal, the deepest lake on Earth, lies in which country?","a":"Russia","d":3}]},{"title":"Arts & Entertainment","questions":[{"q":"Which musical instrument has 88 keys?","a":"The piano","d":1},{"q":"Who directed the 1975 film Jaws?","a":"Steven Spielberg","d":1},{"q":"Which painter cut off part of his own ear in 1888?","a":"Vincent van Gogh","d":2},{"q":"Rosencrantz and Guildenstern are characters in which Shakespeare play?","a":"Hamlet","d":2},{"q":"The Ode to Joy text in Beethoven's Ninth Symphony was written by which poet?","a":"Friedrich Schiller","d":3}]},{"title":"Sport, Food & Odds and Ends","questions":[{"q":"At even strength, how many players from each team are on the ice in a hockey game?","a":"Six, including the goaltender","d":1},{"q":"How many dots are there in total on a standard six-sided die?","a":"21","d":1},{"q":"Which spice is the most expensive in the world by weight?","a":"Saffron","d":2},{"q":"Which letter of the alphabet appears in no U.S. state name?","a":"Q","d":2},{"q":"In golf, what is the common name for a score of three under par on a single hole?","a":"An albatross (also called a double eagle)","d":3}]}]}</script>
 <script>
 "use strict";
 
-/* ============ CONTENT ============ */
-var ROUNDS = [
-  { title:"History", questions:[
-    { q:"In what year did the Berlin Wall fall?", a:"1989", d:1 },
-    { q:"Who was the first woman to win a Nobel Prize?", a:"Marie Curie (Physics, 1903)", d:1 },
-    { q:"The Rosetta Stone carries the same decree in three scripts. Name any two.", a:"Hieroglyphic, Demotic, Ancient Greek", d:2 },
-    { q:"The 1494 Treaty of Tordesillas divided newly explored lands between which two countries?", a:"Spain and Portugal", d:3 },
-    { q:"Mansa Musa, famous for his staggering wealth, ruled which West African empire?", a:"The Mali Empire", d:3 }
-  ]},
-  { title:"Science & Nature", questions:[
-    { q:"What is the most abundant gas in Earth's atmosphere?", a:"Nitrogen (about 78 percent)", d:1 },
-    { q:"How many bones are in the adult human body?", a:"206", d:1 },
-    { q:"What is the only metal that is liquid at room temperature?", a:"Mercury", d:2 },
-    { q:"What is the chemical symbol for tungsten?", a:"W, from its German name wolfram", d:3 },
-    { q:"Which scientist identified the electron, in 1897?", a:"J.J. Thomson", d:3 }
-  ]},
-  { title:"Geography", questions:[
-    { q:"Mount Kilimanjaro, the highest peak in Africa, is in which country?", a:"Tanzania", d:1 },
-    { q:"What is the capital of Australia?", a:"Canberra", d:1 },
-    { q:"Which two countries share the longest international border in the world?", a:"The United States and Canada", d:2 },
-    { q:"What is the smallest country in the world by land area?", a:"Vatican City", d:2 },
-    { q:"Lake Baikal, the deepest lake on Earth, lies in which country?", a:"Russia", d:3 }
-  ]},
-  { title:"Arts & Entertainment", questions:[
-    { q:"Which musical instrument has 88 keys?", a:"The piano", d:1 },
-    { q:"Who directed the 1975 film Jaws?", a:"Steven Spielberg", d:1 },
-    { q:"Which painter cut off part of his own ear in 1888?", a:"Vincent van Gogh", d:2 },
-    { q:"Rosencrantz and Guildenstern are characters in which Shakespeare play?", a:"Hamlet", d:2 },
-    { q:"The Ode to Joy text in Beethoven's Ninth Symphony was written by which poet?", a:"Friedrich Schiller", d:3 }
-  ]},
-  { title:"Sport, Food & Odds and Ends", questions:[
-    { q:"At even strength, how many players from each team are on the ice in a hockey game?", a:"Six, including the goaltender", d:1 },
-    { q:"How many dots are there in total on a standard six-sided die?", a:"21", d:1 },
-    { q:"Which spice is the most expensive in the world by weight?", a:"Saffron", d:2 },
-    { q:"Which letter of the alphabet appears in no U.S. state name?", a:"Q", d:2 },
-    { q:"In golf, what is the common name for a score of three under par on a single hole?", a:"An albatross (also called a double eagle)", d:3 }
-  ]}
-];
+/* ============ PACKS ============ */
+var QPR = 5;
+var MAXR = 10;
+var PACKS_KEY = "postit.packs.v1";
+var BUILTIN = [];
+var packErr = null;
+var importOpen = false, importText = "", importMsg = null;
+function R(){ return (S && S.pack && S.pack.rounds) ? S.pack.rounds : []; }
+function NR(){ return R().length; }
+function isImport(id){ return typeof id === "string" && id.indexOf("import:") === 0; }
+function validatePack(p){
+  if(!p || typeof p !== "object" || Array.isArray(p)) return { ok:false, error:"Not a pack: expected a JSON object with a name and rounds." };
+  if(typeof p.name !== "string" || !p.name.trim()) return { ok:false, error:"The pack needs a name." };
+  if(!Array.isArray(p.rounds) || p.rounds.length < 1 || p.rounds.length > MAXR){
+    return { ok:false, error:"A pack needs 1 to " + MAXR + " rounds; this one has " + (Array.isArray(p.rounds) ? p.rounds.length : "none") + "." };
+  }
+  for(var i = 0; i < p.rounds.length; i++){
+    var r = p.rounds[i];
+    var label = "Round " + (i + 1) + (r && typeof r.title === "string" && r.title.trim() ? " (" + r.title.trim() + ")" : "");
+    if(!r || typeof r !== "object") return { ok:false, error:label + " is not an object." };
+    if(typeof r.title !== "string" || !r.title.trim()) return { ok:false, error:label + " needs a title." };
+    if(!Array.isArray(r.questions) || r.questions.length !== QPR){
+      return { ok:false, error:label + " has " + (Array.isArray(r.questions) ? r.questions.length : "no") + " questions; every round needs exactly " + QPR + "." };
+    }
+    for(var j = 0; j < r.questions.length; j++){
+      var q = r.questions[j], ql = label + ", question " + (j + 1);
+      if(!q || typeof q !== "object") return { ok:false, error:ql + " is not an object." };
+      if(typeof q.q !== "string" || !q.q.trim()) return { ok:false, error:ql + " needs q (the question text)." };
+      if(typeof q.a !== "string" || !q.a.trim()) return { ok:false, error:ql + " needs a (the answer)." };
+      if(q.d !== 1 && q.d !== 2 && q.d !== 3) return { ok:false, error:ql + ": d must be 1, 2 or 3." };
+    }
+  }
+  return { ok:true };
+}
+function normalizePack(p, id){
+  return { id:id, name:String(p.name).trim().slice(0, 60), rounds:p.rounds.map(function(r){
+    return { title:String(r.title).trim(), questions:r.questions.map(function(q){ return { q:String(q.q).trim(), a:String(q.a).trim(), d:q.d }; }) };
+  }) };
+}
+function fallbackPack(){
+  try {
+    var el = document.getElementById("fallbackPack");
+    var p = JSON.parse(el.textContent);
+    return validatePack(p).ok ? normalizePack(p, "builtin:general-knowledge-1.json") : null;
+  } catch(e){ return null; }
+}
+function importedPacks(){
+  try {
+    var a = JSON.parse(safeGet(localStorage, PACKS_KEY) || "[]");
+    return Array.isArray(a) ? a.filter(function(p){ return p && isImport(p.id) && validatePack(p).ok; }) : [];
+  } catch(e){ return []; }
+}
+function saveImported(list){ safeSet(localStorage, PACKS_KEY, JSON.stringify(list)); }
+function allPacks(){ return BUILTIN.concat(importedPacks()); }
+function findPack(id){ var all = allPacks(); for(var i = 0; i < all.length; i++) if(all[i].id === id) return all[i]; return null; }
+function defaultPack(){ return BUILTIN[0] || fallbackPack(); }
+function loadBuiltins(){
+  var fb = fallbackPack();
+  var done = function(list){
+    BUILTIN = list.length ? list : (fb ? [fb] : []);
+    if(!S.pack && BUILTIN.length){ S.pack = BUILTIN[0]; persist(); }
+    else if(S.pack && S.phase === "lobby" && role !== "phone"){
+      var fresher = findPack(S.pack.id);
+      if(fresher && !isImport(S.pack.id)){ S.pack = fresher; persist(); }
+    }
+    render();
+  };
+  if(typeof fetch !== "function" || !/^https?:$/.test(location.protocol)){ done([]); return; }
+  fetch("packs/index.json", { cache:"no-cache" })
+    .then(function(r){ if(!r.ok) throw new Error(r.status); return r.json(); })
+    .then(function(idx){
+      if(!Array.isArray(idx)) throw new Error("index");
+      return Promise.all(idx.map(function(e){
+        if(!e || typeof e.file !== "string" || !/^[\w.-]+\.json$/.test(e.file)) return null;
+        return fetch("packs/" + e.file, { cache:"no-cache" })
+          .then(function(r){ if(!r.ok) throw new Error(r.status); return r.json(); })
+          .then(function(p){ return validatePack(p).ok ? normalizePack(p, "builtin:" + e.file) : null; })
+          .catch(function(){ return null; });
+      }));
+    })
+    .then(function(list){ done(list.filter(Boolean)); })
+    .catch(function(){ packErr = "Couldn't load packs/ from the server, so only the built-in pack is available."; done([]); });
+}
+function addImported(text){
+  var obj;
+  try { obj = JSON.parse(text); }
+  catch(e){ importMsg = { ok:false, text:"That isn't valid JSON: " + (e && e.message ? e.message : e) }; renderHost(); return; }
+  var v = validatePack(obj);
+  if(!v.ok){ importMsg = { ok:false, text:v.error }; renderHost(); return; }
+  var p = normalizePack(obj, "import:" + Date.now().toString(36));
+  var list = importedPacks(); list.push(p); saveImported(list);
+  importOpen = false; importText = ""; importMsg = { ok:true, text:"Added " + p.name + " (" + p.rounds.length + " round" + (p.rounds.length === 1 ? "" : "s") + ")." };
+  S.pack = p;
+  commit();
+}
+function deleteImported(id){
+  saveImported(importedPacks().filter(function(p){ return p.id !== id; }));
+  importMsg = null;
+  if(S.pack && S.pack.id === id) S.pack = defaultPack();
+  commit();
+}
+
 var CHIPS = [2,4,6,8,10];
 var TCOL = ["var(--t1)","var(--t2)","var(--t3)","var(--t4)","var(--t5)","var(--t6)"];
 var MINT = 2, MAXT = 6;
@@ -564,6 +629,7 @@ function fresh(n){
     delta: fill(n, function(){ return 0; }),
     timer: { running:false, remaining:FULL, endsAt:0 },
     phones: false,
+    pack: (S && S.pack) || defaultPack(),
     history: []
   };
 }
@@ -572,7 +638,7 @@ function blankEntries(n){
 }
 function N(){ return S.teams.length; }
 function zeros(){ return fill(N(), function(){ return 0; }); }
-var LSKEY = "postit.state.v1";
+var LSKEY = "postit.state.v2";
 var S = null;
 var role = null;
 var myTeam = null;
@@ -591,6 +657,8 @@ var kickMsg = null;
 var scoreProblem = null;
 var pulseScore = false;
 var pending = null;
+var phonePack = null;
+var packAskedAt = 0;
 var pendingConfirm = false;
 
 function safeGet(store, k){ try { return store.getItem(k); } catch(e){ return null; } }
@@ -601,7 +669,11 @@ function load(){
   if(!raw) return null;
   try {
     var o = JSON.parse(raw);
-    if(o && o.teams && o.teams.length >= MINT && o.teams.length <= MAXT && Array.isArray(o.used)) return o;
+    if(!o || !o.teams || o.teams.length < MINT || o.teams.length > MAXT || !Array.isArray(o.used)) return null;
+    if(!o.pack || typeof o.pack.id !== "string" || !validatePack(o.pack).ok) return null;
+    if(typeof o.round !== "number" || o.round < 0 || o.round >= o.pack.rounds.length) return null;
+    if(typeof o.q !== "number" || o.q < 0 || o.q >= QPR) return null;
+    return o;
   } catch(e){}
   return null;
 }
@@ -612,6 +684,7 @@ if(!S.claims || S.claims.length !== S.teams.length) S.claims = fill(S.teams.leng
 delete S.joinUrl;
 if(typeof S.code !== "string" || S.code.length !== 6) S.code = null;
 if(!S.gid) S.gid = Date.now();
+if(!S.pack) S.pack = defaultPack();
 
 var bc = null;
 try { if(window.BroadcastChannel) bc = new BroadcastChannel("postit-game"); } catch(e){}
@@ -620,6 +693,7 @@ function persist(){ safeSet(localStorage, LSKEY, JSON.stringify(S)); }
 
 function adopt(incoming){
   if(!incoming || typeof incoming.rev !== "number") return;
+  if(!incoming.pack || !validatePack(incoming.pack).ok) return;
   if(incoming.rev <= S.rev && incoming.phase === S.phase) return;
   if(incoming.rev < S.rev) return;
   S = incoming;
@@ -690,8 +764,14 @@ function slimState(){
   return {
     rev:S.rev, phase:S.phase, round:S.round, q:S.q, phones:S.phones,
     gid:S.gid, code:S.code, claims:S.claims,
+    pack:S.pack ? { id:S.pack.id, name:S.pack.name, n:NR() } : null,
     teams:S.teams, used:S.used, delta:S.delta, timer:S.timer, entries:S.entries
   };
+}
+function packMsg(){ return { t:"pack", pack:S.pack }; }
+function sendPackIfNew(c){
+  if(!S.pack) return;
+  if(c._packId !== S.pack.id){ c._packId = S.pack.id; send(c, packMsg()); }
 }
 function send(c, msg){
   if(!c || !c.open) return false;
@@ -710,7 +790,7 @@ function pushPeers(){
   clearTimeout(pushTimer);
   pushTimer = setTimeout(function(){
     var msg = { t:"state", state:slimState() };
-    conns.forEach(function(c){ send(c, msg); });
+    conns.forEach(function(c){ sendPackIfNew(c); send(c, msg); });
   }, 220);
 }
 function hostPeerStart(){
@@ -729,7 +809,7 @@ function hostPeerStart(){
   p.on("connection", function(c){
     if(peer !== p){ try { c.close(); } catch(e){} return; }
     conns.push(c);
-    c.on("open", function(){ send(c, { t:"state", state:slimState() }); });
+    c.on("open", function(){ sendPackIfNew(c); send(c, { t:"state", state:slimState() }); });
     c.on("data", function(m){ hostOnData(c, m); });
     var drop = function(){ var k = conns.indexOf(c); if(k !== -1) conns.splice(k, 1); };
     c.on("close", drop);
@@ -760,6 +840,8 @@ function hostOnData(c, m){
   if(!m || typeof m !== "object") return;
   if(m.t === "hello"){
     if(typeof m.seat === "number" && m.seat >= 0 && m.seat < N() && S.claims[m.seat]) c._seat = m.seat;
+    c._packId = null;
+    sendPackIfNew(c);
     send(c, { t:"state", state:slimState() });
   } else if(m.t === "claim"){
     var i = m.seat, nm = String(m.name || "").trim().slice(0, 18);
@@ -887,9 +969,20 @@ function phoneLost(msg){
 }
 function phoneOnData(m){
   if(!m || typeof m !== "object") return;
+  if(m.t === "pack" && m.pack && validatePack(m.pack).ok && typeof m.pack.id === "string"){
+    phonePack = m.pack;
+    if(S && S.pack && S.pack.id === phonePack.id && !S.pack.rounds){ S.pack = phonePack; render(); }
+    return;
+  }
   if(m.t === "state" && m.state && typeof m.state.rev === "number"){
     var d = m.state;
     d.history = [];
+    if(d.pack && phonePack && phonePack.id === d.pack.id) d.pack = phonePack;
+    else if(d.pack && S && S.pack && S.pack.rounds && S.pack.id === d.pack.id) d.pack = S.pack;
+    else {
+      d.pack = d.pack ? { id:d.pack.id, name:d.pack.name, rounds:null } : null;
+      if(Date.now() - packAskedAt > 3000){ packAskedAt = Date.now(); send(conn, { t:"hello", seat:phoneSeat() }); }
+    }
     S = d;
     if(pending && (pending.round !== S.round || pending.q !== S.q)) pending = null;
     if(pending && myTeam !== null && S.entries[myTeam] && S.entries[myTeam].ans !== null) pending = null;
@@ -1001,7 +1094,7 @@ function paintClocks(){
 }
 
 /* ============ GAME ACTIONS ============ */
-function curQ(){ return ROUNDS[S.round].questions[S.q]; }
+function curQ(){ var r = R()[S.round]; return r ? r.questions[S.q] : null; }
 function avail(i){
   return CHIPS.filter(function(c){ return S.used[i].indexOf(c) === -1; });
 }
@@ -1093,7 +1186,7 @@ function undo(){
 }
 function advance(){
   S.delta = zeros();
-  if(S.q < 4){
+  if(S.q < QPR - 1){
     S.q += 1;
     S.entries = blankEntries();
     S.phase = "asking";
@@ -1104,7 +1197,7 @@ function advance(){
   commit();
 }
 function nextRound(){
-  if(S.round < 4){
+  if(S.round < NR() - 1){
     S.round += 1;
     S.q = 0;
     S.used = fill(N(), function(){ return []; });
@@ -1143,6 +1236,7 @@ function setRole(r){
   render();
 }
 function render(){
+  renderLobby();
   if(role === "host") renderHost();
   else if(role === "tv") renderTv();
   else if(role === "phone") renderPhone();
@@ -1150,22 +1244,27 @@ function render(){
 }
 
 /* ---- lobby ---- */
-(function lobbyRounds(){
-  var el = document.getElementById("lobbyRounds");
-  el.innerHTML = ROUNDS.map(function(r, i){
+var NUMWORD = ["One","Two","Three","Four","Five","Six","Seven","Eight","Nine","Ten"];
+function renderLobby(){
+  var el = document.getElementById("lobbyRounds"), eb = document.getElementById("lobbyEyebrow");
+  var n = NR();
+  if(eb) eb.textContent = (S.pack && S.pack.name ? S.pack.name + " \u00b7 " : "") + (NUMWORD[n - 1] || n) + " round" + (n === 1 ? "" : "s") + " \u00b7 Five questions \u00b7 Two to six teams";
+  if(el) el.innerHTML = R().map(function(r, i){
     return '<div class="rs-item"><b>' + (i + 1) + ". " + esc(r.title) + "</b><span>5 questions</span></div>";
   }).join("");
-})();
+}
+renderLobby();
 Array.prototype.forEach.call(document.querySelectorAll(".role"), function(b){
   b.addEventListener("click", function(){ setRole(b.dataset.role); });
 });
 
 /* ---- TV ---- */
 function renderTv(){
-  var r = ROUNDS[S.round];
-  document.getElementById("tvRound").textContent = "Round " + (S.round + 1) + " of 5";
+  var r = R()[S.round];
+  if(!r){ document.getElementById("tvStage").innerHTML = '<p class="tv-lede">Loading questions\u2026</p>'; return; }
+  document.getElementById("tvRound").textContent = "Round " + (S.round + 1) + " of " + NR();
   document.getElementById("tvCat").textContent = r.title;
-  document.getElementById("tvPips").innerHTML = [0,1,2,3,4].map(function(i){
+  document.getElementById("tvPips").innerHTML = fill(QPR, function(i){
     var c = i < S.q ? "done" : (i === S.q ? "now" : "");
     return '<span class="pip ' + c + '"></span>';
   }).join("");
@@ -1181,11 +1280,12 @@ function renderTv(){
   var html = "";
   if(S.phase === "lobby" && !S.phones){
     html = '<p class="tv-msg"><small>Get comfortable</small>Post<span style="color:var(--t1)">-</span>It</p>' +
-      '<p class="tv-lede">' + N() + ' teams. Five rounds. Every round you get one 2, 4, 6, 8 and 10 to spend, each exactly once. Right answer banks the chip.</p>';
+      '<p class="tv-lede">' + N() + ' teams. ' + esc(S.pack.name) + ', ' + NR() + ' round' + (NR() === 1 ? "" : "s") + '. Every round you get one 2, 4, 6, 8 and 10 to spend, each exactly once. Right answer banks the chip.</p>';
   } else if(S.phase === "lobby"){
     html = '<div class="tv-join"><div class="tv-qr" id="tvQr"></div><div>' +
       '<p class="tv-msg" style="font-size:clamp(28px,4.2vw,62px);margin-bottom:clamp(14px,2vh,26px)">' +
       '<small>Scan to claim a team</small>' + N() + ' seats</p>' +
+      '<p class="tv-lede" style="margin:0 0 6px">' + esc(S.pack.name) + ' \u00b7 ' + NR() + ' round' + (NR() === 1 ? "" : "s") + '</p>' +
       '<p class="tv-lede" style="margin:0 0 clamp(14px,2vh,26px)">' +
         (S.code ? 'Or open <b>' + esc(pageUrl()) + '</b> and enter code <b class="num" style="color:var(--t1);letter-spacing:.12em">' + esc(fmtCode(S.code)) + '</b>' : 'Waiting for the host to open the phone link\u2026') + '</p>' +
       '<div class="tv-slots">' + S.teams.map(function(t, i){
@@ -1194,7 +1294,7 @@ function renderTv(){
           (c ? '<span class="nm">' + esc(c) + "</span>" : '<span class="wait">Open seat</span>') + "</div>";
       }).join("") + "</div></div></div>";
   } else if(S.phase === "intro"){
-    html = '<p class="tv-msg"><small>Round ' + (S.round + 1) + ' of 5</small>' + esc(r.title) + '</p>' +
+    html = '<p class="tv-msg"><small>Round ' + (S.round + 1) + ' of ' + NR() + '</small>' + esc(r.title) + '</p>' +
            '<p class="tv-lede">Fresh chips. Each team has one 2, 4, 6, 8 and 10 to spend across these five questions.</p>';
   } else if(S.phase === "roundEnd"){
     html = '<p class="tv-msg"><small>End of round ' + (S.round + 1) + '</small>' + esc(r.title) + '</p>' +
@@ -1243,7 +1343,8 @@ function renderTv(){
 
 /* ---- HOST ---- */
 function renderHost(){
-  var r = ROUNDS[S.round];
+  var r = R()[S.round];
+  if(!r){ document.getElementById("qpanel").innerHTML = '<p class="hint">Loading questions\u2026</p>'; return; }
   var qq = r.questions[S.q];
   document.getElementById("hPhase").textContent =
     S.phase === "lobby" ? "Lobby" :
@@ -1281,6 +1382,32 @@ function renderHost(){
         '<span class="cnt num">' + cnt + '</span>' +
         '<button id="tmPlus"' + (cnt >= MAXT ? " disabled" : "") + ' aria-label="More teams">+</button></div></div>';
 
+    var pt = document.getElementById("packText");
+    if(pt) importText = pt.value;
+    var packs = allPacks(), cur = S.pack, nr = NR();
+    setup +=
+      '<div class="setuprow"><div><b>Question pack</b><p>' + esc(cur.name) + ' \u00b7 ' + nr + ' round' + (nr === 1 ? "" : "s") +
+        (isImport(cur.id) ? ' \u00b7 <span class="tag" style="padding:1px 6px;font-size:9.5px">imported</span>' : "") + '</p>' +
+        (packErr ? '<p class="netmsg" style="margin:4px 0 0">' + esc(packErr) + '</p>' : "") + '</div>' +
+        '<div class="actions" style="justify-content:flex-end">' +
+          '<select class="linkin" id="packSel" aria-label="Question pack" style="flex:none;width:auto;max-width:240px">' +
+            packs.map(function(pk){
+              return '<option value="' + esc(pk.id) + '"' + (pk.id === cur.id ? " selected" : "") + '>' + esc(pk.name) + (isImport(pk.id) ? " \u00b7 imported" : "") + "</option>";
+            }).join("") +
+            (findPack(cur.id) ? "" : '<option value="' + esc(cur.id) + '" selected>' + esc(cur.name) + " \u00b7 in play</option>") +
+          '</select>' +
+          (isImport(cur.id) ? '<button class="btn ghost danger" id="btnDelPack" aria-label="Delete this imported pack">Delete</button>' : "") +
+          '<button class="btn" id="btnImport">' + (importOpen ? "Close" : "Import pack") + '</button>' +
+        '</div></div>' +
+      (importOpen ?
+        '<div class="setuprow" style="display:block">' +
+          '<p class="elabel">Paste pack JSON</p>' +
+          '<textarea class="linkin" id="packText" rows="8" spellcheck="false" aria-label="Pack JSON" style="width:100%;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12.5px;resize:vertical">' + esc(importText) + '</textarea>' +
+          '<div class="actions" style="margin-top:10px"><button class="btn primary" id="btnAddPack">Add pack</button>' +
+          '<span class="hint" style="margin:0">Need one? Paste PACK_PROMPT.md into Claude.</span></div>' +
+        '</div>' : "") +
+      (importMsg ? '<p class="' + (importMsg.ok ? "hint" : "netmsg") + '" id="importMsg" style="margin:' + (importOpen ? "8px" : "-6px") + ' 0 10px">' + esc(importMsg.text) + '</p>' : "");
+
     if(S.phones){
       setup +=
         '<div class="joinwrap" style="padding-top:16px;border-top:1px solid var(--line)"><div>' +
@@ -1313,6 +1440,13 @@ function renderHost(){
     document.getElementById("tmMinus").onclick = function(){ setTeamCount(cnt - 1); };
     document.getElementById("tmPlus").onclick = function(){ setTeamCount(cnt + 1); };
     document.getElementById("btnGo").onclick = startGame;
+    var sel = document.getElementById("packSel");
+    sel.onchange = function(){ var pk = findPack(sel.value); if(pk){ importMsg = null; S.pack = pk; commit(); } };
+    document.getElementById("btnImport").onclick = function(){ importOpen = !importOpen; importMsg = null; renderHost(); };
+    var bd = document.getElementById("btnDelPack");
+    if(bd) bd.onclick = function(){ deleteImported(S.pack.id); };
+    var ba = document.getElementById("btnAddPack");
+    if(ba) ba.onclick = function(){ addImported(document.getElementById("packText").value); };
     if(S.phones){
       drawQr(document.getElementById("hQr"), S.code ? joinUrl() : "", 340);
       document.getElementById("btnClearJoin").onclick = clearSeats;
@@ -1326,7 +1460,7 @@ function renderHost(){
   }
   if(S.phase === "intro"){
     p.innerHTML =
-      '<p class="eyebrow">Round ' + (S.round + 1) + ' of 5</p>' +
+      '<p class="eyebrow">Round ' + (S.round + 1) + ' of ' + NR() + '</p>' +
       '<p class="qtext" style="margin-bottom:8px">' + esc(r.title) + "</p>" +
       '<p class="hint" style="margin:0 0 18px">Five questions. Every team gets a fresh set of chips: 2, 4, 6, 8, 10, each used once.</p>' +
       '<div class="actions"><button class="btn primary big" id="btnStart">Start round ' + (S.round + 1) + "</button></div>";
@@ -1340,7 +1474,7 @@ function renderHost(){
       '<p class="eyebrow">Round ' + (S.round + 1) + ' complete</p>' +
       '<p class="qtext" style="margin-bottom:18px">' + esc(r.title) + "</p>" +
       '<div class="actions"><button class="btn primary big" id="btnNextR">' +
-      (S.round < 4 ? "Start round " + (S.round + 2) + ": " + esc(ROUNDS[S.round + 1].title) : "See final scores") +
+      (S.round < NR() - 1 ? "Start round " + (S.round + 2) + ": " + esc(R()[S.round + 1].title) : "See final scores") +
       "</button></div>";
     document.getElementById("btnNextR").onclick = nextRound;
     document.getElementById("entries").innerHTML = scoreboardPanel();
@@ -1350,7 +1484,7 @@ function renderHost(){
   if(S.phase === "final"){
     p.innerHTML =
       '<p class="eyebrow">Game over</p>' +
-      '<p class="qtext" style="margin-bottom:18px">All 25 questions played.</p>' +
+      '<p class="qtext" style="margin-bottom:18px">All ' + (NR() * QPR) + ' questions played.</p>' +
       '<div class="actions"><button class="btn big" id="btnAgain">Play again</button></div>';
     document.getElementById("btnAgain").onclick = resetGame;
     document.getElementById("entries").innerHTML = scoreboardPanel();
@@ -1368,12 +1502,12 @@ function renderHost(){
     pulseScore = false;
     if(probs.length) extra = '<p class="netmsg" id="scoreMsg" style="flex-basis:100%;margin:2px 0 0">' + esc(problemText(probs)) + "</p>";
   } else if(S.phase === "scored"){
-    mainBtn = '<button class="btn primary big mainact" id="btnNext">' + (S.q < 4 ? "Next question" : "End of round") + "</button>";
+    mainBtn = '<button class="btn primary big mainact" id="btnNext">' + (S.q < QPR - 1 ? "Next question" : "End of round") + "</button>";
   }
 
   p.innerHTML =
     stepsHtml() +
-    '<div class="qhead"><span class="eyebrow">Q' + (S.q + 1) + ' of 5</span>' +
+    '<div class="qhead"><span class="eyebrow">Q' + (S.q + 1) + ' of ' + QPR + '</span>' +
     '<span class="cat">' + esc(r.title) + "</span>" +
     '<span class="diff d' + qq.d + '">' + DIFF[qq.d] + "</span></div>" +
     '<p class="qtext">' + esc(qq.q) + "</p>" +
@@ -1653,13 +1787,15 @@ function renderPhone(){
     return;
   }
 
+  var cq = curQ();
+  if(!cq){ stage.innerHTML = '<div class="waitbox">Loading questions\u2026</div>'; return; }
   var free = avail(myTeam);
   var keepAns = document.getElementById("pAns") ? document.getElementById("pAns").value : "";
   var keepPickEl = document.querySelector(".pchip.on");
   var keepPick = keepPickEl && free.indexOf(+keepPickEl.dataset.c) !== -1 ? +keepPickEl.dataset.c : null;
   stage.innerHTML =
-    '<p class="eyebrow">Round ' + (S.round + 1) + " · Question " + (S.q + 1) + ' of 5 &nbsp;&nbsp; <span id="pClock" class="num">1:00</span></p>' +
-    '<p class="pq">' + esc(curQ().q) + "</p>" +
+    '<p class="eyebrow">Round ' + (S.round + 1) + " · Question " + (S.q + 1) + ' of ' + QPR + ' &nbsp;&nbsp; <span id="pClock" class="num">1:00</span></p>' +
+    '<p class="pq">' + esc(cq.q) + "</p>" +
     '<textarea class="pans" id="pAns" style="--tc:' + TCOL[myTeam] + '" placeholder="Your answer" maxlength="200">' + esc(keepAns) + '</textarea>' +
     '<div><p class="elabel">Wager (each one once per round)</p><div class="pchips" id="pChips" style="--tc:' + TCOL[myTeam] + '">' +
     CHIPS.map(function(c){
@@ -1704,6 +1840,7 @@ document.getElementById("pSwitch").onclick = function(){
 
 /* ============ BOOT ============ */
 (function boot(){
+  loadBuiltins();
   var saved = safeGet(sessionStorage, "postit.role");
   if(saved === "host" || saved === "tv" || saved === "phone"){ setRole(saved); return; }
   var h = location.hash.replace("#", "");

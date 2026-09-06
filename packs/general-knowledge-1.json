@@ -1,0 +1,155 @@
+{
+  "name": "General Knowledge Vol. 1",
+  "rounds": [
+    {
+      "title": "History",
+      "questions": [
+        {
+          "q": "In what year did the Berlin Wall fall?",
+          "a": "1989",
+          "d": 1
+        },
+        {
+          "q": "Who was the first woman to win a Nobel Prize?",
+          "a": "Marie Curie (Physics, 1903)",
+          "d": 1
+        },
+        {
+          "q": "The Rosetta Stone carries the same decree in three scripts. Name any two.",
+          "a": "Hieroglyphic, Demotic, Ancient Greek",
+          "d": 2
+        },
+        {
+          "q": "The 1494 Treaty of Tordesillas divided newly explored lands between which two countries?",
+          "a": "Spain and Portugal",
+          "d": 3
+        },
+        {
+          "q": "Mansa Musa, famous for his staggering wealth, ruled which West African empire?",
+          "a": "The Mali Empire",
+          "d": 3
+        }
+      ]
+    },
+    {
+      "title": "Science & Nature",
+      "questions": [
+        {
+          "q": "What is the most abundant gas in Earth's atmosphere?",
+          "a": "Nitrogen (about 78 percent)",
+          "d": 1
+        },
+        {
+          "q": "How many bones are in the adult human body?",
+          "a": "206",
+          "d": 1
+        },
+        {
+          "q": "What is the only metal that is liquid at room temperature?",
+          "a": "Mercury",
+          "d": 2
+        },
+        {
+          "q": "What is the chemical symbol for tungsten?",
+          "a": "W, from its German name wolfram",
+          "d": 3
+        },
+        {
+          "q": "Which scientist identified the electron, in 1897?",
+          "a": "J.J. Thomson",
+          "d": 3
+        }
+      ]
+    },
+    {
+      "title": "Geography",
+      "questions": [
+        {
+          "q": "Mount Kilimanjaro, the highest peak in Africa, is in which country?",
+          "a": "Tanzania",
+          "d": 1
+        },
+        {
+          "q": "What is the capital of Australia?",
+          "a": "Canberra",
+          "d": 1
+        },
+        {
+          "q": "Which two countries share the longest international border in the world?",
+          "a": "The United States and Canada",
+          "d": 2
+        },
+        {
+          "q": "What is the smallest country in the world by land area?",
+          "a": "Vatican City",
+          "d": 2
+        },
+        {
+          "q": "Lake Baikal, the deepest lake on Earth, lies in which country?",
+          "a": "Russia",
+          "d": 3
+        }
+      ]
+    },
+    {
+      "title": "Arts & Entertainment",
+      "questions": [
+        {
+          "q": "Which musical instrument has 88 keys?",
+          "a": "The piano",
+          "d": 1
+        },
+        {
+          "q": "Who directed the 1975 film Jaws?",
+          "a": "Steven Spielberg",
+          "d": 1
+        },
+        {
+          "q": "Which painter cut off part of his own ear in 1888?",
+          "a": "Vincent van Gogh",
+          "d": 2
+        },
+        {
+          "q": "Rosencrantz and Guildenstern are characters in which Shakespeare play?",
+          "a": "Hamlet",
+          "d": 2
+        },
+        {
+          "q": "The Ode to Joy text in Beethoven's Ninth Symphony was written by which poet?",
+          "a": "Friedrich Schiller",
+          "d": 3
+        }
+      ]
+    },
+    {
+      "title": "Sport, Food & Odds and Ends",
+      "questions": [
+        {
+          "q": "At even strength, how many players from each team are on the ice in a hockey game?",
+          "a": "Six, including the goaltender",
+          "d": 1
+        },
+        {
+          "q": "How many dots are there in total on a standard six-sided die?",
+          "a": "21",
+          "d": 1
+        },
+        {
+          "q": "Which spice is the most expensive in the world by weight?",
+          "a": "Saffron",
+          "d": 2
+        },
+        {
+          "q": "Which letter of the alphabet appears in no U.S. state name?",
+          "a": "Q",
+          "d": 2
+        },
+        {
+          "q": "In golf, what is the common name for a score of three under par on a single hole?",
+          "a": "An albatross (also called a double eagle)",
+          "d": 3
+        }
+      ]
+    }
+  ]
+}

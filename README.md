@@ -33,6 +33,36 @@ Open the same URL and pick a role on the lobby screen.
 - Works best with everyone on the same Wi-Fi. Some networks block WebRTC. If a phone can't connect it says so in one line, and the host simply carries on with post-its. Scoring never depends on the network.
 - Switching Phone mode off mid-game puts you straight back on post-its with nothing lost.
 
+## Question packs
+
+Questions live in JSON packs, not in the page. A pack is one file:
+
+```json
+{
+  "name": "General Knowledge Vol. 1",
+  "rounds": [
+    { "title": "History", "questions": [ { "q": "...", "a": "...", "d": 1 } ] }
+  ]
+}
+```
+
+Every round has exactly 5 questions (one per chip), a pack has 1 to 10 rounds, and `d` is a difficulty from 1 to 3 that only the host sees. Bad packs are refused on import with a message naming the round that is wrong.
+
+**Writing a pack.** Paste [PACK_PROMPT.md](PACK_PROMPT.md) into Claude, save the JSON it returns.
+
+**Importing a pack for tonight.** On the host setup screen, find the **Question pack** row, press **Import pack**, paste the JSON, press **Add pack**. It appears in the dropdown with an *imported* tag and is kept in this browser until you delete it. Pick it before you press Start; the pack is fixed once a game begins.
+
+**Adding a pack to the repo permanently.** Drop the file in `packs/`, add a line for it to `packs/index.json`:
+
+```json
+[
+  { "file": "general-knowledge-1.json", "name": "General Knowledge Vol. 1" },
+  { "file": "your-pack.json", "name": "Your Pack Name" }
+]
+```
+
+then commit and push. It shows up in the dropdown for everyone. When the page is opened straight from disk (`file://`) it cannot fetch `packs/`, so it falls back to the built-in copy of General Knowledge Vol. 1 embedded in the page.
+
 ## Local development
 
 Serve the folder over HTTP (some browser features are off on `file://`):
